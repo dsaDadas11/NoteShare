@@ -141,20 +141,7 @@ fun NoteShareAppScreen(mainViewModel: MainViewModel = hiltViewModel()) {
                     }
                 )
             }
-            composable("profile") { 
-                val deletedNoteId by navController.currentBackStackEntry!!
-                    .savedStateHandle
-                    .getStateFlow<Long?>("deletedNoteId", null)
-                    .collectAsState()
-
-                LaunchedEffect(deletedNoteId) {
-                    if (deletedNoteId != null) {
-                        navController.currentBackStackEntry!!
-                            .savedStateHandle
-                            .remove<Long>("deletedNoteId")
-                    }
-                }
-
+            composable("profile") {
                 ProfileScreen(
                     onNavigateBack = { navController.navigateUp() },
                     onNavigateToEditProfile = { navController.navigate("edit_profile") },
@@ -167,30 +154,15 @@ fun NoteShareAppScreen(mainViewModel: MainViewModel = hiltViewModel()) {
                             }
                             launchSingleTop = true
                         }
-                    },
-                    refreshSignal = deletedNoteId
+                    }
                 )
             }
-            composable("profile/{userId}") { 
-                val deletedNoteId by navController.currentBackStackEntry!!
-                    .savedStateHandle
-                    .getStateFlow<Long?>("deletedNoteId", null)
-                    .collectAsState()
-
-                LaunchedEffect(deletedNoteId) {
-                    if (deletedNoteId != null) {
-                        navController.currentBackStackEntry!!
-                            .savedStateHandle
-                            .remove<Long>("deletedNoteId")
-                    }
-                }
-
+            composable("profile/{userId}") {
                 ProfileScreen(
                     onNavigateBack = { navController.navigateUp() },
-                    onNavigateToEditProfile = { }, // Not used for other users
+                    onNavigateToEditProfile = { },
                     onNavigateToDetail = { noteId -> navController.navigate("note_detail/$noteId") },
-                    onLogout = { },
-                    refreshSignal = deletedNoteId
+                    onLogout = { }
                 )
             }
             composable("search") { 
@@ -200,10 +172,10 @@ fun NoteShareAppScreen(mainViewModel: MainViewModel = hiltViewModel()) {
                     onNavigateToProfile = { userId -> navController.navigate("profile/$userId") }
                 ) 
             }
-            composable("edit_profile") { 
+            composable("edit_profile") {
                 EditProfileScreen(
                     onNavigateBack = { navController.navigateUp() }
-                ) 
+                )
             }
         }
     }

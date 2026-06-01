@@ -27,6 +27,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.example.noteshare.core.common.formatDateTime
 import com.example.noteshare.core.network.resolveMediaUrl
+import com.example.noteshare.shared.ui.AvatarImage
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -183,14 +184,13 @@ fun NoteDetailScreen(
                             .padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        AsyncImage(
+                        AvatarImage(
                             model = resolveMediaUrl(note.author.avatarUrl)
                                 ?: "https://api.dicebear.com/7.x/avataaars/png?seed=${note.author.username}",
                             contentDescription = "Author Avatar",
                             modifier = Modifier
                                 .size(48.dp)
-                                .clip(CircleShape),
-                            contentScale = ContentScale.Crop
+                                .clip(CircleShape)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
@@ -280,14 +280,13 @@ fun NoteDetailScreen(
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 8.dp)
                     ) {
-                        AsyncImage(
+                        AvatarImage(
                             model = resolveMediaUrl(comment.user.avatarUrl)
                                 ?: "https://api.dicebear.com/7.x/avataaars/png?seed=${comment.user.username}",
                             contentDescription = "Commenter Avatar",
                             modifier = Modifier
                                 .size(36.dp)
-                                .clip(CircleShape),
-                            contentScale = ContentScale.Crop
+                                .clip(CircleShape)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {

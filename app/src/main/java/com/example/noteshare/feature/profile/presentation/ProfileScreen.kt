@@ -8,17 +8,19 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import coil.compose.AsyncImage
 import com.example.noteshare.core.network.resolveMediaUrl
+import com.example.noteshare.shared.ui.AvatarImage
 import com.example.noteshare.shared.ui.NoteCard
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -28,16 +30,22 @@ fun ProfileScreen(
     onNavigateToEditProfile: () -> Unit,
     onNavigateToDetail: (Long) -> Unit,
     onLogout: () -> Unit,
-    refreshSignal: Long? = null,
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val listState = rememberLazyListState()
+    val pullToRefreshState = rememberPullToRefreshState()
 
-    LaunchedEffect(refreshSignal) {
-        if (refreshSignal != null) {
-            viewModel.loadProfile()
+    if (pullToRefreshState.isRefreshing) {
+        LaunchedEffect(true) {
+            viewModel.refresh()
+        }
+    }
+
+    LaunchedEffect(uiState.isRefreshing) {
+        if (!uiState.isRefreshing) {
+            pullToRefreshState.endRefresh()
         }
     }
 
@@ -84,142 +92,149 @@ fun ProfileScreen(
             )
         }
     ) { padding ->
-        if (uiState.isLoading) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        } else if (uiState.profile != null) {
-            val profile = uiState.profile!!
-            LazyColumn(
-                state = listState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-            ) {
-                // Header
-                item {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        AsyncImage(
-                            model = resolveMediaUrl(profile.avatarUrl)
-                                ?: "https://api.dicebear.com/7.x/avataaars/png?seed=${profile.username}",
-                            contentDescription = "Avatar",
-                            modifier = Modifier
-                                .size(80.dp)
-                                .clip(CircleShape),
-                            contentScale = ContentScale.Crop
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = profile.nickname ?: profile.username,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "@${profile.username}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        if (!profile.bio.isNullOrBlank()) {
-                            Text(
-                                text = profile.bio,
-                                style = MaterialTheme.typography.bodyMedium,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.padding(horizontal = 16.dp)
-                            )
-                        }
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Row(
-                            horizontalArrangement = Arrangement.Center,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(text = "${profile.followingCount}", fontWeight = FontWeight.Bold)
-                                Text(text = "关注", style = MaterialTheme.typography.bodySmall)
-                            }
-                            Spacer(modifier = Modifier.width(32.dp))
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(text = "${profile.followerCount}", fontWeight = FontWeight.Bold)
-                                Text(text = "粉丝", style = MaterialTheme.typography.bodySmall)
-                            }
-                            Spacer(modifier = Modifier.width(32.dp))
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(text = "${profile.noteCount}", fontWeight = FontWeight.Bold)
-                                Text(text = "笔记", style = MaterialTheme.typography.bodySmall)
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-                        if (uiState.isMyProfile) {
-                            OutlinedButton(onClick = onNavigateToEditProfile) {
-                                Text("编辑资料")
-                            }
-                        } else {
-                            Button(
-                                onClick = { viewModel.toggleFollow() },
-                                enabled = !uiState.isFollowLoading
-                            ) {
-                                if (uiState.isFollowLoading) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(18.dp),
-                                        strokeWidth = 2.dp
-                                    )
-                                } else {
-                                    Text(if (profile.isFollowing == true) "已关注" else "关注")
-                                }
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(16.dp))
-                        HorizontalDivider()
-                    }
-                }
-
-                // Notes
-                if (uiState.notes.isEmpty() && !uiState.notesLoading) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .nestedScroll(pullToRefreshState.nestedScrollConnection)
+        ) {
+            if (uiState.isLoading) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            } else if (uiState.profile != null) {
+                val profile = uiState.profile!!
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    // Header
                     item {
-                        Box(
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(32.dp),
-                            contentAlignment = Alignment.Center
+                                .padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Text("暂无笔记", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            AvatarImage(
+                                model = resolveMediaUrl(profile.avatarUrl)
+                                    ?: "https://api.dicebear.com/7.x/avataaars/png?seed=${profile.username}",
+                                contentDescription = "Avatar",
+                                modifier = Modifier
+                                    .size(80.dp)
+                                    .clip(CircleShape)
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = profile.nickname ?: profile.username,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "@${profile.username}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            if (!profile.bio.isNullOrBlank()) {
+                                Text(
+                                    text = profile.bio,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.padding(horizontal = 16.dp)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Row(
+                                horizontalArrangement = Arrangement.Center,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(text = "${profile.followingCount}", fontWeight = FontWeight.Bold)
+                                    Text(text = "关注", style = MaterialTheme.typography.bodySmall)
+                                }
+                                Spacer(modifier = Modifier.width(32.dp))
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(text = "${profile.followerCount}", fontWeight = FontWeight.Bold)
+                                    Text(text = "粉丝", style = MaterialTheme.typography.bodySmall)
+                                }
+                                Spacer(modifier = Modifier.width(32.dp))
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(text = "${profile.noteCount}", fontWeight = FontWeight.Bold)
+                                    Text(text = "笔记", style = MaterialTheme.typography.bodySmall)
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+                            if (uiState.isMyProfile) {
+                                OutlinedButton(onClick = onNavigateToEditProfile) {
+                                    Text("编辑资料")
+                                }
+                            } else {
+                                Button(
+                                    onClick = { viewModel.toggleFollow() },
+                                    enabled = !uiState.isFollowLoading
+                                ) {
+                                    if (uiState.isFollowLoading) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(18.dp),
+                                            strokeWidth = 2.dp
+                                        )
+                                    } else {
+                                        Text(if (profile.isFollowing == true) "已关注" else "关注")
+                                    }
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(16.dp))
+                            HorizontalDivider()
                         }
                     }
-                } else {
-                    items(uiState.notes) { note ->
-                        NoteCard(
-                            title = note.title,
-                            content = note.content,
-                            authorName = note.author.nickname ?: note.author.username,
-                            authorAvatarUrl = note.author.avatarUrl,
-                            imageUrl = note.images.firstOrNull()?.url,
-                            likeCount = note.likeCount,
-                            commentCount = note.commentCount,
-                            onClick = { onNavigateToDetail(note.id) }
-                        )
-                    }
 
-                    if (uiState.notesLoading) {
+                    // Notes
+                    if (uiState.notes.isEmpty() && !uiState.notesLoading) {
                         item {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(16.dp),
+                                    .padding(32.dp),
                                 contentAlignment = Alignment.Center
                             ) {
-                                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                Text("暂无笔记", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    } else {
+                        items(uiState.notes) { note ->
+                            NoteCard(
+                                title = note.title,
+                                content = note.content,
+                                authorName = note.author.nickname ?: note.author.username,
+                                authorAvatarUrl = note.author.avatarUrl,
+                                imageUrl = note.images.firstOrNull()?.url,
+                                likeCount = note.likeCount,
+                                commentCount = note.commentCount,
+                                onClick = { onNavigateToDetail(note.id) }
+                            )
+                        }
+
+                        if (uiState.notesLoading) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                }
                             }
                         }
                     }
                 }
             }
+
+            PullToRefreshContainer(
+                modifier = Modifier.align(Alignment.TopCenter),
+                state = pullToRefreshState,
+            )
         }
     }
 }

@@ -47,14 +47,13 @@ fun NoteCard(
                     .padding(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                AsyncImage(
+                AvatarImage(
                     model = resolveMediaUrl(authorAvatarUrl)
                         ?: "https://api.dicebear.com/7.x/avataaars/png?seed=$authorName",
                     contentDescription = "Avatar",
                     modifier = Modifier
                         .size(32.dp)
-                        .clip(CircleShape),
-                    contentScale = ContentScale.Crop
+                        .clip(CircleShape)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(

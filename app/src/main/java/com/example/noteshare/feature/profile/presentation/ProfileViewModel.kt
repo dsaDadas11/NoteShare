@@ -17,6 +17,7 @@ import javax.inject.Inject
 
 data class ProfileUiState(
     val isLoading: Boolean = false,
+    val isRefreshing: Boolean = false,
     val profile: UserProfileResponse? = null,
     val notes: List<NoteResponse> = emptyList(),
     val notesLoading: Boolean = false,
@@ -42,6 +43,11 @@ class ProfileViewModel @Inject constructor(
         loadProfile()
     }
 
+    fun refresh() {
+        _uiState.update { it.copy(isRefreshing = true) }
+        loadProfile()
+    }
+
     fun loadProfile() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
@@ -53,6 +59,7 @@ class ProfileViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
+                                isRefreshing = false,
                                 profile = result.data,
                                 isMyProfile = true
                             )
@@ -60,7 +67,7 @@ class ProfileViewModel @Inject constructor(
                         loadNotes(isRefresh = true)
                     }
                     is Result.Error -> {
-                        _uiState.update { it.copy(isLoading = false, error = result.message) }
+                        _uiState.update { it.copy(isLoading = false, isRefreshing = false, error = result.message) }
                     }
                     else -> {}
                 }
@@ -71,6 +78,7 @@ class ProfileViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
+                                isRefreshing = false,
                                 profile = result.data,
                                 isMyProfile = false
                             )
@@ -78,7 +86,7 @@ class ProfileViewModel @Inject constructor(
                         loadNotes(isRefresh = true)
                     }
                     is Result.Error -> {
-                        _uiState.update { it.copy(isLoading = false, error = result.message) }
+                        _uiState.update { it.copy(isLoading = false, isRefreshing = false, error = result.message) }
                     }
                     else -> {}
                 }
