@@ -111,6 +111,9 @@ class ProfileViewModel @Inject constructor(
                     val pageData = result.data
                     _uiState.update { state ->
                         state.copy(
+                            profile = state.profile?.copy(
+                                noteCount = pageData.total.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+                            ),
                             notes = if (isRefresh) pageData.items else state.notes + pageData.items,
                             notesCurrentPage = pageData.page,
                             notesHasMore = pageData.hasMore,

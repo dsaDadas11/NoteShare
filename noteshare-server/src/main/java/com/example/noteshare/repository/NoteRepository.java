@@ -26,4 +26,6 @@ public interface NoteRepository extends JpaRepository<Note, Long> {
     void incrementCommentCount(@Param("id") Long id);
 
     Page<Note> findByAuthorId(Long authorId, Pageable pageable);
+
+    long countByAuthorId(Long authorId);
 }

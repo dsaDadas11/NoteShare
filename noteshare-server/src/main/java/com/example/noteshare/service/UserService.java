@@ -31,7 +31,7 @@ public class UserService {
         UserResponse resp = UserResponse.from(user);
         resp.setFollowerCount(followService.getFollowerCount(userId));
         resp.setFollowingCount(followService.getFollowingCount(userId));
-        resp.setNoteCount((int) noteRepository.findByAuthorId(userId, org.springframework.data.domain.Pageable.unpaged()).getTotalElements());
+        resp.setNoteCount(toNoteCount(noteRepository.countByAuthorId(userId)));
         resp.setFollowed(false);
         return resp;
     }
@@ -57,7 +57,7 @@ public class UserService {
         UserResponse resp = UserResponse.from(user);
         resp.setFollowerCount(followService.getFollowerCount(userId));
         resp.setFollowingCount(followService.getFollowingCount(userId));
-        resp.setNoteCount((int) noteRepository.findByAuthorId(userId, org.springframework.data.domain.Pageable.unpaged()).getTotalElements());
+        resp.setNoteCount(toNoteCount(noteRepository.countByAuthorId(userId)));
         resp.setFollowed(false);
         return resp;
     }
@@ -72,12 +72,16 @@ public class UserService {
         UserResponse resp = UserResponse.from(user);
         resp.setFollowerCount(followService.getFollowerCount(targetUserId));
         resp.setFollowingCount(followService.getFollowingCount(targetUserId));
-        resp.setNoteCount((int) noteRepository.findByAuthorId(targetUserId, org.springframework.data.domain.Pageable.unpaged()).getTotalElements());
+        resp.setNoteCount(toNoteCount(noteRepository.countByAuthorId(targetUserId)));
 
         if (currentUserId != null) {
             resp.setFollowed(followService.isFollowing(currentUserId, targetUserId));
         }
 
         return resp;
+    }
+
+    private int toNoteCount(long count) {
+        return count > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) count;
     }
 }
