@@ -1,0 +1,2 @@
+# Negate Maven wrapper JAR (root *.jar would ignore it)
+!.mvn/wrapper/maven-wrapper.jar

@@ -1,0 +1,62 @@
+package com.example.noteshare.feature.auth.presentation
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.noteshare.core.common.Result
+import com.example.noteshare.feature.auth.data.AuthRepository
+import com.example.noteshare.feature.auth.domain.model.RegisterRequest
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+data class RegisterUiState(
+    val isLoading: Boolean = false,
+    val error: String? = null,
+    val isSuccess: Boolean = false
+)
+
+@HiltViewModel
+class RegisterViewModel @Inject constructor(
+    private val authRepository: AuthRepository
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow(RegisterUiState())
+    val uiState: StateFlow<RegisterUiState> = _uiState.asStateFlow()
+
+    fun register(username: String, password: String, confirmPassword: String) {
+        if (username.length < 3 || username.length > 50) {
+            _uiState.update { it.copy(error = "用户名长度必须在 3-50 个字符之间") }
+            return
+        }
+        if (password.length < 6 || password.length > 50) {
+            _uiState.update { it.copy(error = "密码长度必须在 6-50 个字符之间") }
+            return
+        }
+        if (password != confirmPassword) {
+            _uiState.update { it.copy(error = "两次输入的密码不一致") }
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            val result = authRepository.register(RegisterRequest(username, password))
+            when (result) {
+                is Result.Success -> {
+                    _uiState.update { it.copy(isLoading = false, isSuccess = true) }
+                }
+                is Result.Error -> {
+                    _uiState.update { it.copy(isLoading = false, error = result.message) }
+                }
+                is Result.Loading -> {}
+            }
+        }
+    }
+
+    fun errorShown() {
+        _uiState.update { it.copy(error = null) }
+    }
+}

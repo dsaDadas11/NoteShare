@@ -1,0 +1,45 @@
+server:
+  port: 8080
+  address: 0.0.0.0
+
+spring:
+  application:
+    name: noteshare-server
+
+  # 默认使用 MySQL
+  datasource:
+    url: jdbc:mysql://localhost:3306/noteshare?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8mb4
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  # JPA 配置
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+
+  # 文件上传限制
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
+
+# JWT 配置
+jwt:
+  secret: noteshare-jwt-secret-key-for-hs512-must-be-at-least-512-bits-long-64bytes
+  expiration: 604800000       # 7 天
+
+# 文件存储配置
+file:
+  upload-dir: ./uploads
+  allowed-types:
+    - image/jpeg
+    - image/png
+    - image/gif
+    - image/webp
+  max-size: 5242880           # 5MB
