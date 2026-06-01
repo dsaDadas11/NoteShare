@@ -7,14 +7,12 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -35,19 +33,6 @@ fun ProfileScreen(
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val listState = rememberLazyListState()
-    val pullToRefreshState = rememberPullToRefreshState()
-
-    if (pullToRefreshState.isRefreshing) {
-        LaunchedEffect(true) {
-            viewModel.refresh()
-        }
-    }
-
-    LaunchedEffect(uiState.isRefreshing) {
-        if (!uiState.isRefreshing) {
-            pullToRefreshState.endRefresh()
-        }
-    }
 
     LaunchedEffect(uiState.error) {
         uiState.error?.let {
@@ -58,7 +43,7 @@ fun ProfileScreen(
 
     // Load more
     LaunchedEffect(listState) {
-        snapshotFlow { 
+        snapshotFlow {
             val layoutInfo = listState.layoutInfo
             val totalItemsNumber = layoutInfo.totalItemsCount
             val lastVisibleItemIndex = (layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) + 1
@@ -78,12 +63,15 @@ fun ProfileScreen(
                 navigationIcon = {
                     if (!uiState.isMyProfile) {
                         IconButton(onClick = onNavigateBack) {
-                            Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back")
+                            Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "返回")
                         }
                     }
                 },
                 actions = {
                     if (uiState.isMyProfile) {
+                        IconButton(onClick = { viewModel.refresh() }) {
+                            Icon(imageVector = Icons.Default.Refresh, contentDescription = "刷新")
+                        }
                         TextButton(onClick = onLogout) {
                             Text("退出")
                         }
@@ -96,7 +84,6 @@ fun ProfileScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .nestedScroll(pullToRefreshState.nestedScrollConnection)
         ) {
             if (uiState.isLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
@@ -117,7 +104,7 @@ fun ProfileScreen(
                             AvatarImage(
                                 model = resolveMediaUrl(profile.avatarUrl)
                                     ?: "https://api.dicebear.com/7.x/avataaars/png?seed=${profile.username}",
-                                contentDescription = "Avatar",
+                                contentDescription = "头像",
                                 modifier = Modifier
                                     .size(80.dp)
                                     .clip(CircleShape)
@@ -230,11 +217,6 @@ fun ProfileScreen(
                     }
                 }
             }
-
-            PullToRefreshContainer(
-                modifier = Modifier.align(Alignment.TopCenter),
-                state = pullToRefreshState,
-            )
         }
     }
 }

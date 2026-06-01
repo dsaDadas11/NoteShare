@@ -1,0 +1,27 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1
+    username: sa
+    password: 
+    driver-class-name: org.h2.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+
+jwt:
+  secret: noteshare-jwt-secret-key-for-hs512-must-be-at-least-512-bits-long-64bytes
+  expiration: 604800000
+
+file:
+  upload-dir: ./uploads
+  allowed-types:
+    - image/jpeg
+    - image/png
+    - image/gif
+    - image/webp
+  max-size: 5242880

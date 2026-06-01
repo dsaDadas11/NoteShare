@@ -17,7 +17,6 @@ import javax.inject.Inject
 
 data class ProfileUiState(
     val isLoading: Boolean = false,
-    val isRefreshing: Boolean = false,
     val profile: UserProfileResponse? = null,
     val notes: List<NoteResponse> = emptyList(),
     val notesLoading: Boolean = false,
@@ -44,13 +43,14 @@ class ProfileViewModel @Inject constructor(
     }
 
     fun refresh() {
-        _uiState.update { it.copy(isRefreshing = true) }
         loadProfile()
     }
 
     fun loadProfile() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            // 首次加载（profile为空）时显示全屏加载圈；已有数据时静默刷新
+            val showFullLoading = _uiState.value.profile == null
+            _uiState.update { it.copy(isLoading = showFullLoading, error = null) }
 
             if (targetUserId == null) {
                 // 我的主页：只发一个请求
@@ -59,7 +59,6 @@ class ProfileViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
-                                isRefreshing = false,
                                 profile = result.data,
                                 isMyProfile = true
                             )
@@ -67,7 +66,7 @@ class ProfileViewModel @Inject constructor(
                         loadNotes(isRefresh = true)
                     }
                     is Result.Error -> {
-                        _uiState.update { it.copy(isLoading = false, isRefreshing = false, error = result.message) }
+                        _uiState.update { it.copy(isLoading = false, error = result.message) }
                     }
                     else -> {}
                 }
@@ -78,7 +77,6 @@ class ProfileViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
-                                isRefreshing = false,
                                 profile = result.data,
                                 isMyProfile = false
                             )
@@ -86,7 +84,7 @@ class ProfileViewModel @Inject constructor(
                         loadNotes(isRefresh = true)
                     }
                     is Result.Error -> {
-                        _uiState.update { it.copy(isLoading = false, isRefreshing = false, error = result.message) }
+                        _uiState.update { it.copy(isLoading = false, error = result.message) }
                     }
                     else -> {}
                 }

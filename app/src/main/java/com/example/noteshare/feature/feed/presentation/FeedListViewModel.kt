@@ -15,7 +15,6 @@ import javax.inject.Inject
 
 data class FeedUiState(
     val notes: List<NoteResponse> = emptyList(),
-    val isRefreshing: Boolean = false,
     val isLoadingMore: Boolean = false,
     val currentPage: Int = 1,
     val hasMore: Boolean = true,
@@ -35,9 +34,6 @@ class FeedListViewModel @Inject constructor(
     }
 
     fun refresh() {
-        if (_uiState.value.isRefreshing) return
-        _uiState.update { it.copy(isRefreshing = true, error = null) }
-        
         viewModelScope.launch {
             when (val result = repository.getNotes(1)) {
                 is Result.Success -> {
@@ -47,13 +43,13 @@ class FeedListViewModel @Inject constructor(
                             notes = pageData.items,
                             currentPage = pageData.page,
                             hasMore = pageData.hasMore,
-                            isRefreshing = false
+                            error = null
                         )
                     }
                 }
                 is Result.Error -> {
-                    _uiState.update { 
-                        it.copy(isRefreshing = false, error = result.message) 
+                    _uiState.update {
+                        it.copy(error = result.message)
                     }
                 }
                 else -> {}
@@ -63,7 +59,7 @@ class FeedListViewModel @Inject constructor(
 
     fun loadMore() {
         val currentState = _uiState.value
-        if (currentState.isRefreshing || currentState.isLoadingMore || !currentState.hasMore) return
+        if (currentState.isLoadingMore || !currentState.hasMore) return
         
         _uiState.update { it.copy(isLoadingMore = true, error = null) }
         val nextPage = currentState.currentPage + 1

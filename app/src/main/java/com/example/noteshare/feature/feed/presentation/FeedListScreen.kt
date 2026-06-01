@@ -5,14 +5,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -31,29 +29,15 @@ fun FeedListScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val listState = rememberLazyListState()
 
-    val pullToRefreshState = rememberPullToRefreshState()
-
     LaunchedEffect(refreshSignal) {
         if (refreshSignal != null) {
             viewModel.refresh()
         }
     }
-    
-    if (pullToRefreshState.isRefreshing) {
-        LaunchedEffect(true) {
-            viewModel.refresh()
-        }
-    }
-    
-    LaunchedEffect(uiState.isRefreshing) {
-        if (!uiState.isRefreshing) {
-            pullToRefreshState.endRefresh()
-        }
-    }
 
     // Load more trigger
     LaunchedEffect(listState) {
-        snapshotFlow { 
+        snapshotFlow {
             val layoutInfo = listState.layoutInfo
             val totalItemsNumber = layoutInfo.totalItemsCount
             val lastVisibleItemIndex = (layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) + 1
@@ -78,8 +62,11 @@ fun FeedListScreen(
             TopAppBar(
                 title = { Text("随记") },
                 actions = {
+                    IconButton(onClick = { viewModel.refresh() }) {
+                        Icon(imageVector = Icons.Default.Refresh, contentDescription = "刷新")
+                    }
                     IconButton(onClick = onNavigateToSearch) {
-                        Icon(imageVector = Icons.Default.Search, contentDescription = "Search")
+                        Icon(imageVector = Icons.Default.Search, contentDescription = "搜索")
                     }
                 }
             )
@@ -89,9 +76,8 @@ fun FeedListScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .nestedScroll(pullToRefreshState.nestedScrollConnection)
         ) {
-            if (uiState.notes.isEmpty() && !uiState.isRefreshing) {
+            if (uiState.notes.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
                         text = if (uiState.error != null) "加载失败: ${uiState.error}" else "暂无笔记，快去发布吧",
@@ -118,7 +104,7 @@ fun FeedListScreen(
                             onAuthorClick = { onNavigateToProfile(note.author.id) }
                         )
                     }
-                    
+
                     if (uiState.isLoadingMore) {
                         item {
                             Box(
@@ -145,11 +131,6 @@ fun FeedListScreen(
                     }
                 }
             }
-            
-            PullToRefreshContainer(
-                modifier = Modifier.align(Alignment.TopCenter),
-                state = pullToRefreshState,
-            )
         }
     }
 }
