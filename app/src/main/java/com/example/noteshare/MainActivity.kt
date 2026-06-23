@@ -6,7 +6,6 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -15,11 +14,16 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.noteshare.core.datastore.TokenManager
+import com.example.noteshare.core.network.TokenInterceptor
 import com.example.noteshare.shared.ui.BottomNavBar
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.noteshare.feature.auth.presentation.LoginScreen
@@ -27,19 +31,41 @@ import com.example.noteshare.feature.auth.presentation.RegisterScreen
 import com.example.noteshare.feature.feed.presentation.FeedListScreen
 import com.example.noteshare.feature.feed.presentation.NoteDetailScreen
 import com.example.noteshare.feature.feed.presentation.SearchScreen
+import com.example.noteshare.feature.notification.presentation.NotificationScreen
 import com.example.noteshare.feature.publish.presentation.PublishScreen
 import com.example.noteshare.feature.profile.presentation.ProfileScreen
 import com.example.noteshare.feature.profile.presentation.EditProfileScreen
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import javax.inject.Inject
+import javax.inject.Singleton
+
+/** 全局 401 事件总线 */
+@Singleton
+class UnauthorizedEventBus @Inject constructor() {
+    private val _events = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val events = _events.asSharedFlow()
+    fun emit() { _events.tryEmit(Unit) }
+}
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject lateinit var tokenInterceptor: TokenInterceptor
+    @Inject lateinit var tokenManager: TokenManager
+    @Inject lateinit var unauthorizedEventBus: UnauthorizedEventBus
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // 注册 401 回调：拦截器收到 401 时触发事件总线
+        tokenInterceptor.onUnauthorized = { unauthorizedEventBus.emit() }
+
         setContent {
-            MaterialTheme {
+            com.example.noteshare.core.ui.theme.NoteShareTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.background
                 ) {
                     NoteShareAppScreen()
                 }
@@ -49,12 +75,30 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun NoteShareAppScreen(mainViewModel: MainViewModel = hiltViewModel()) {
+fun NoteShareAppScreen(
+    mainViewModel: MainViewModel = hiltViewModel()
+) {
     val navController = rememberNavController()
-    val isLoggedIn by mainViewModel.isUserLoggedIn.collectAsState(initial = null)
+    val isLoggedIn by mainViewModel.loginState.collectAsState()
+
+    // 监听 401 事件，自动跳转登录页
+    val unauthorizedEventBus = remember {
+        // 通过 Hilt 获取 - 在 Composable 中通过 Activity 获取
+        // 这里用 mainViewModel 间接处理
+        null
+    }
+    LaunchedEffect(Unit) {
+        mainViewModel.unauthorizedEvents.collect {
+            navController.navigate("login") {
+                popUpTo(navController.graph.startDestinationId) {
+                    inclusive = true
+                }
+                launchSingleTop = true
+            }
+        }
+    }
 
     if (isLoggedIn == null) {
-        // Checking login status
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             androidx.compose.material3.CircularProgressIndicator()
         }
@@ -64,14 +108,17 @@ fun NoteShareAppScreen(mainViewModel: MainViewModel = hiltViewModel()) {
     val startDestination = if (isLoggedIn == true) "feed" else "login"
 
     Scaffold(
-        bottomBar = { BottomNavBar(navController = navController) }
+        bottomBar = {
+            val unreadCount by mainViewModel.unreadCount.collectAsState()
+            BottomNavBar(navController = navController, unreadCount = unreadCount)
+        }
     ) { paddingValues ->
         NavHost(
             navController = navController,
             startDestination = startDestination,
             modifier = Modifier.padding(paddingValues)
         ) {
-            composable("feed") { 
+            composable("feed") {
                 val deletedNoteId by navController.currentBackStackEntry!!
                     .savedStateHandle
                     .getStateFlow<Long?>("deletedNoteId", null)
@@ -90,9 +137,9 @@ fun NoteShareAppScreen(mainViewModel: MainViewModel = hiltViewModel()) {
                     onNavigateToDetail = { noteId -> navController.navigate("note_detail/$noteId") },
                     onNavigateToProfile = { userId -> navController.navigate("profile/$userId") },
                     refreshSignal = deletedNoteId
-                ) 
+                )
             }
-            composable("publish") { 
+            composable("publish") {
                 PublishScreen(
                     onNavigateBack = { navController.navigateUp() },
                     onPublishSuccess = {
@@ -100,9 +147,9 @@ fun NoteShareAppScreen(mainViewModel: MainViewModel = hiltViewModel()) {
                             popUpTo("feed") { inclusive = true }
                         }
                     }
-                ) 
+                )
             }
-            composable("login") { 
+            composable("login") {
                 LoginScreen(
                     onLoginSuccess = {
                         navController.navigate("feed") {
@@ -112,9 +159,9 @@ fun NoteShareAppScreen(mainViewModel: MainViewModel = hiltViewModel()) {
                     onNavigateToRegister = {
                         navController.navigate("register")
                     }
-                ) 
+                )
             }
-            composable("register") { 
+            composable("register") {
                 RegisterScreen(
                     onRegisterSuccess = {
                         navController.navigate("login") {
@@ -124,7 +171,7 @@ fun NoteShareAppScreen(mainViewModel: MainViewModel = hiltViewModel()) {
                     onNavigateToLogin = {
                         navController.navigateUp()
                     }
-                ) 
+                )
             }
             composable("note_detail/{noteId}") { backStackEntry ->
                 val noteId = backStackEntry.arguments?.getString("noteId")?.toLongOrNull()
@@ -146,6 +193,10 @@ fun NoteShareAppScreen(mainViewModel: MainViewModel = hiltViewModel()) {
                     onNavigateBack = { navController.navigateUp() },
                     onNavigateToEditProfile = { navController.navigate("edit_profile") },
                     onNavigateToDetail = { noteId -> navController.navigate("note_detail/$noteId") },
+                    onNavigateToNotification = {
+                        mainViewModel.clearUnreadCount()
+                        navController.navigate("notification")
+                    },
                     onLogout = {
                         mainViewModel.logout()
                         navController.navigate("login") {
@@ -165,12 +216,19 @@ fun NoteShareAppScreen(mainViewModel: MainViewModel = hiltViewModel()) {
                     onLogout = { }
                 )
             }
-            composable("search") { 
+            composable("search") {
                 SearchScreen(
                     onNavigateBack = { navController.navigateUp() },
                     onNavigateToDetail = { noteId -> navController.navigate("note_detail/$noteId") },
                     onNavigateToProfile = { userId -> navController.navigate("profile/$userId") }
-                ) 
+                )
+            }
+            composable("notification") {
+                NotificationScreen(
+                    onNavigateBack = { navController.navigateUp() },
+                    onNavigateToDetail = { noteId -> navController.navigate("note_detail/$noteId") },
+                    onNavigateToProfile = { userId -> navController.navigate("profile/$userId") }
+                )
             }
             composable("edit_profile") {
                 EditProfileScreen(
