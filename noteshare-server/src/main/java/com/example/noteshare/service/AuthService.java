@@ -11,6 +11,7 @@ import com.example.noteshare.repository.UserRepository;
 import com.example.noteshare.security.JwtUtil;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 认证服务：注册 / 登录
@@ -33,6 +34,7 @@ public class AuthService {
     /**
      * 注册
      */
+    @Transactional
     public UserResponse register(RegisterRequest req) {
         // 1. 检查用户名是否已存在
         if (userRepository.existsByUsername(req.getUsername())) {

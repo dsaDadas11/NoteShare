@@ -1,0 +1,107 @@
+<h2>🔔 通知功能 — 完整设计方案</h2>
+<p class="subtitle">请确认以下设计，然后我们开始实现</p>
+
+<div class="section">
+  <h3>📋 需求总结</h3>
+  <div style="background: #f0f7ff; border-radius: 12px; padding: 16px; margin: 12px 0;">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+      <div>
+        <div style="font-size: 12px; color: #666; margin-bottom: 4px;">通知类型</div>
+        <div style="font-weight: 600;">❤️ 点赞 + 💬 评论</div>
+      </div>
+      <div>
+        <div style="font-size: 12px; color: #666; margin-bottom: 4px;">推送方式</div>
+        <div style="font-weight: 600;">WebSocket 实时推送</div>
+      </div>
+      <div>
+        <div style="font-size: 12px; color: #666; margin-bottom: 4px;">列表样式</div>
+        <div style="font-weight: 600;">时间线列表（独立条目）</div>
+      </div>
+      <div>
+        <div style="font-size: 12px; color: #666; margin-bottom: 4px;">红点位置</div>
+        <div style="font-weight: 600;">底部导航 "我的" Tab</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>🗄️ 后端设计</h3>
+  <div style="background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 16px; margin: 12px 0;">
+    <h4 style="margin-top: 0;">新增数据库表：notifications</h4>
+    <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+      <tr style="background: #f8f9fa;"><td style="padding: 6px; font-weight: 600;">字段</td><td style="padding: 6px; font-weight: 600;">类型</td><td style="padding: 6px; font-weight: 600;">说明</td></tr>
+      <tr><td style="padding: 6px;">id</td><td style="padding: 6px;">BIGINT</td><td style="padding: 6px;">主键</td></tr>
+      <tr><td style="padding: 6px;">type</td><td style="padding: 6px;">VARCHAR</td><td style="padding: 6px;">LIKE / COMMENT</td></tr>
+      <tr><td style="padding: 6px;">sender_id</td><td style="padding: 6px;">BIGINT</td><td style="padding: 6px;">触发者（谁点赞/评论）</td></tr>
+      <tr><td style="padding: 6px;">receiver_id</td><td style="padding: 6px;">BIGINT</td><td style="padding: 6px;">接收者（笔记作者）</td></tr>
+      <tr><td style="padding: 6px;">note_id</td><td style="padding: 6px;">BIGINT</td><td style="padding: 6px;">关联的笔记</td></tr>
+      <tr><td style="padding: 6px;">is_read</td><td style="padding: 6px;">BOOLEAN</td><td style="padding: 6px;">是否已读</td></tr>
+      <tr><td style="padding: 6px;">created_at</td><td style="padding: 6px;">DATETIME</td><td style="padding: 6px;">创建时间</td></tr>
+    </table>
+
+    <h4>新增 API</h4>
+    <div style="font-size: 13px;">
+      <div style="margin: 4px 0;">📌 <code>GET /api/notifications</code> — 获取通知列表（分页）</div>
+      <div style="margin: 4px 0;">📌 <code>GET /api/notifications/unread-count</code> — 获取未读数量</div>
+      <div style="margin: 4px 0;">📌 <code>PUT /api/notifications/read-all</code> — 全部标记已读</div>
+      <div style="margin: 4px 0;">🔌 <code>WS /ws/notification</code> — WebSocket 实时推送</div>
+    </div>
+
+    <h4>触发时机</h4>
+    <div style="font-size: 13px;">
+      <div>• 用户点赞笔记 → 向笔记作者推送 LIKE 通知</div>
+      <div>• 用户评论笔记 → 向笔记作者推送 COMMENT 通知</div>
+      <div>• 自己操作不触发通知（不给自己发）</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>📱 Android 端设计</h3>
+  <div style="background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 16px; margin: 12px 0;">
+    <h4 style="margin-top: 0;">新增模块：feature/notification/</h4>
+    <div style="font-size: 13px;">
+      <div>• <b>NotificationApi.kt</b> — Retrofit 接口（列表 + 未读数 + 已读）</div>
+      <div>• <b>NotificationRepository.kt</b> — 数据仓库</div>
+      <div>• <b>NotificationScreen.kt</b> — 通知列表页面（时间线样式）</div>
+      <div>• <b>NotificationViewModel.kt</b> — 状态管理</div>
+      <div>• <b>WebSocketClient.kt</b> — WebSocket 客户端，监听通知推送</div>
+    </div>
+
+    <h4>红点逻辑</h4>
+    <div style="font-size: 13px;">
+      <div>• MainViewModel 持有未读通知数状态</div>
+      <div>• WebSocket 收到推送 → 未读数 +1 → BottomNavBar 显示红点</div>
+      <div>• 进入通知页 → 调用已读接口 → 红点消失</div>
+    </div>
+
+    <h4>导航变更</h4>
+    <div style="font-size: 13px;">
+      <div>• "我的" 页面增加"通知"入口（顶部铃铛图标 + 红点）</div>
+      <div>• 新增路由 <code>notification</code> → NotificationScreen</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>⚡ 工作量估算</h3>
+  <div style="background: #f0fff0; border-radius: 12px; padding: 16px; margin: 12px 0;">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px;">
+      <div>
+        <div style="font-weight: 600; margin-bottom: 8px;">后端（~6 个文件）</div>
+        <div>• Entity + Repository</div>
+        <div>• Service + Controller</div>
+        <div>• WebSocket 配置</div>
+        <div>• 触发通知逻辑</div>
+      </div>
+      <div>
+        <div style="font-weight: 600; margin-bottom: 8px;">Android（~6 个文件）</div>
+        <div>• API + Repository</div>
+        <div>• Screen + ViewModel</div>
+        <div>• WebSocket 客户端</div>
+        <div>• 红点 UI 集成</div>
+      </div>
+    </div>
+  </div>
+</div>

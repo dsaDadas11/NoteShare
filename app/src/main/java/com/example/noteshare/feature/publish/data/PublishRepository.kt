@@ -24,6 +24,7 @@ class PublishRepository @Inject constructor(
 ) {
     companion object {
         private const val MAX_UPLOAD_BYTES = 5L * 1024L * 1024L
+        private const val MAX_VIDEO_UPLOAD_BYTES = 50L * 1024L * 1024L
     }
 
     suspend fun uploadImage(uri: Uri): Result<String> {
@@ -58,9 +59,45 @@ class PublishRepository @Inject constructor(
         }
     }
 
-    suspend fun createNote(title: String, content: String, imageUrls: List<String>): Result<NoteResponse> {
+    suspend fun uploadVideo(uri: Uri): Result<String> {
         return try {
-            val response = noteApi.createNote(CreateNoteRequest(title, content, imageUrls))
+            val contentResolver = context.contentResolver
+            val mimeType = withContext(Dispatchers.IO) { contentResolver.getType(uri) ?: "video/mp4" }
+            val statSize = withContext(Dispatchers.IO) {
+                contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize } ?: -1L
+            }
+            if (statSize > MAX_VIDEO_UPLOAD_BYTES) {
+                return Result.Error(ErrorCode.FILE_TOO_LARGE, "单个视频不能超过 50MB")
+            }
+            val bytes = withContext(Dispatchers.IO) {
+                contentResolver.openInputStream(uri)?.use { it.readBytes() }
+            } ?: return Result.Error(ErrorCode.INVALID_PARAMETER, "无法读取视频内容")
+            if (bytes.size > MAX_VIDEO_UPLOAD_BYTES) {
+                return Result.Error(ErrorCode.FILE_TOO_LARGE, "单个视频不能超过 50MB")
+            }
+            val requestBody = bytes.toRequestBody(mimeType.toMediaTypeOrNull())
+            val extension = when {
+                mimeType.contains("webm") -> "webm"
+                mimeType.contains("3gpp") -> "3gp"
+                else -> "mp4"
+            }
+            val filename = "video_${UUID.randomUUID()}.$extension"
+            val part = MultipartBody.Part.createFormData("file", filename, requestBody)
+
+            val response = uploadApi.uploadVideo(part)
+            if (response.code == ErrorCode.SUCCESS && response.data != null) {
+                Result.Success(response.data)
+            } else {
+                Result.Error(response.code, response.message)
+            }
+        } catch (e: Exception) {
+            Result.Error(ErrorCode.NETWORK_ERROR, "视频上传失败: ${e.message}")
+        }
+    }
+
+    suspend fun createNote(title: String, content: String, imageUrls: List<String>, videoUrl: String? = null): Result<NoteResponse> {
+        return try {
+            val response = noteApi.createNote(CreateNoteRequest(title, content, imageUrls, videoUrl))
             if (response.code == ErrorCode.SUCCESS && response.data != null) {
                 Result.Success(response.data)
             } else {

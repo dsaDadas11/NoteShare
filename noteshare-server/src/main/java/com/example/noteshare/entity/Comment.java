@@ -17,8 +17,21 @@ public class Comment {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
+    @Column(name = "parent_id")
+    private Long parentId;
+
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
+
+    @Column(name = "like_count", nullable = false)
+    private Integer likeCount = 0;
+
+    @Column(name = "reply_count", nullable = false)
+    private Integer replyCount = 0;
+
+    /** 回复目标作者昵称（楼中楼展示用） */
+    @Column(name = "reply_to_author", length = 50)
+    private String replyToAuthor;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -34,8 +47,16 @@ public class Comment {
     public void setNoteId(Long noteId) { this.noteId = noteId; }
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
+    public Long getParentId() { return parentId; }
+    public void setParentId(Long parentId) { this.parentId = parentId; }
     public String getContent() { return content; }
     public void setContent(String content) { this.content = content; }
+    public Integer getLikeCount() { return likeCount; }
+    public void setLikeCount(Integer likeCount) { this.likeCount = likeCount; }
+    public Integer getReplyCount() { return replyCount; }
+    public void setReplyCount(Integer replyCount) { this.replyCount = replyCount; }
+    public String getReplyToAuthor() { return replyToAuthor; }
+    public void setReplyToAuthor(String replyToAuthor) { this.replyToAuthor = replyToAuthor; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

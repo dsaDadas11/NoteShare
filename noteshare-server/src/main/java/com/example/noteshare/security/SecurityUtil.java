@@ -1,5 +1,7 @@
 package com.example.noteshare.security;
 
+import com.example.noteshare.common.BusinessException;
+import com.example.noteshare.common.ErrorCode;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -14,7 +16,7 @@ public class SecurityUtil {
     public static Long currentUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !(auth.getPrincipal() instanceof UserDetailsImpl)) {
-            throw new RuntimeException("用户未登录");
+            throw new BusinessException(ErrorCode.AUTH_UNAUTHORIZED);
         }
         return ((UserDetailsImpl) auth.getPrincipal()).getUserId();
     }

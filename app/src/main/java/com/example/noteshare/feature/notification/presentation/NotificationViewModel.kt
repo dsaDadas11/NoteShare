@@ -40,10 +40,10 @@ class NotificationViewModel @Inject constructor(
             notificationRepository.getNotifications(page = 1)
                 .onSuccess { pageData ->
                     _uiState.value = _uiState.value.copy(
-                        notifications = pageData.content,
+                        notifications = pageData.items,
                         isLoading = false,
                         currentPage = 1,
-                        hasMore = pageData.content.size >= 20
+                        hasMore = pageData.items.size >= 20
                     )
                 }
                 .onFailure { e ->
@@ -63,10 +63,10 @@ class NotificationViewModel @Inject constructor(
             notificationRepository.getNotifications(page = nextPage)
                 .onSuccess { pageData ->
                     _uiState.value = _uiState.value.copy(
-                        notifications = _uiState.value.notifications + pageData.content,
+                        notifications = _uiState.value.notifications + pageData.items,
                         isLoadingMore = false,
                         currentPage = nextPage,
-                        hasMore = pageData.content.size >= 20
+                        hasMore = pageData.items.size >= 20
                     )
                 }
                 .onFailure {

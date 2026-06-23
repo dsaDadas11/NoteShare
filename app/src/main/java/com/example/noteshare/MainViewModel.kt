@@ -81,7 +81,7 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             notificationRepository.getUnreadCount()
                 .onSuccess { count ->
-                    _unreadCount.value = count
+                    _unreadCount.value = count.toLong()
                 }
         }
     }

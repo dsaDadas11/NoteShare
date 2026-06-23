@@ -17,6 +17,7 @@ data class PublishUiState(
     val title: String = "",
     val content: String = "",
     val selectedImages: List<Uri> = emptyList(),
+    val selectedVideo: Uri? = null,
     val isLoading: Boolean = false,
     val error: String? = null,
     val isSuccess: Boolean = false
@@ -47,10 +48,22 @@ class PublishViewModel @Inject constructor(
             val currentImages = state.selectedImages
             val newImages = (currentImages + uris).distinct()
             if (newImages.size > 3) {
-                state.copy(selectedImages = newImages.take(3), error = "最多只能选择 3 张图片")
+                state.copy(selectedImages = newImages.take(3), selectedVideo = null, error = "最多只能选择 3 张图片")
             } else {
-                state.copy(selectedImages = newImages)
+                state.copy(selectedImages = newImages, selectedVideo = null)
             }
+        }
+    }
+
+    fun setVideo(uri: Uri) {
+        _uiState.update { state ->
+            state.copy(selectedVideo = uri, selectedImages = emptyList())
+        }
+    }
+
+    fun removeVideo() {
+        _uiState.update { state ->
+            state.copy(selectedVideo = null)
         }
     }
 
@@ -85,19 +98,34 @@ class PublishViewModel @Inject constructor(
                         _uiState.update { it.copy(isLoading = false, error = "图片上传失败: ${uploadResult.message}") }
                         return@launch
                     }
-                    else -> {}
+                    Result.Loading -> {}
                 }
             }
             
-            // 2. Create note
-            when (val result = repository.createNote(currentState.title, currentState.content, uploadedUrls)) {
+            // 2. Upload video
+            var uploadedVideoUrl: String? = null
+            if (currentState.selectedVideo != null) {
+                when (val uploadResult = repository.uploadVideo(currentState.selectedVideo)) {
+                    is Result.Success -> {
+                        uploadedVideoUrl = uploadResult.data
+                    }
+                    is Result.Error -> {
+                        _uiState.update { it.copy(isLoading = false, error = "视频上传失败: ${uploadResult.message}") }
+                        return@launch
+                    }
+                    Result.Loading -> {}
+                }
+            }
+            
+            // 3. Create note
+            when (val result = repository.createNote(currentState.title, currentState.content, uploadedUrls, uploadedVideoUrl)) {
                 is Result.Success -> {
                     _uiState.update { it.copy(isLoading = false, isSuccess = true) }
                 }
                 is Result.Error -> {
                     _uiState.update { it.copy(isLoading = false, error = result.message) }
                 }
-                else -> {}
+                Result.Loading -> {}
             }
         }
     }

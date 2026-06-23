@@ -10,4 +10,7 @@ public interface LikeRelRepository extends JpaRepository<LikeRel, Long> {
 
     @Transactional
     void deleteByUserIdAndNoteId(Long userId, Long noteId);
+
+    @Transactional
+    void deleteByNoteId(Long noteId);
 }

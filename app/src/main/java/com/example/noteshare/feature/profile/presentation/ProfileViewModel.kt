@@ -24,7 +24,8 @@ data class ProfileUiState(
     val notesHasMore: Boolean = true,
     val error: String? = null,
     val isMyProfile: Boolean = true,
-    val isFollowLoading: Boolean = false
+    val isFollowLoading: Boolean = false,
+    val loadMoreFailed: Boolean = false
 )
 
 @HiltViewModel
@@ -68,7 +69,7 @@ class ProfileViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update { it.copy(isLoading = false, error = result.message) }
                     }
-                    else -> {}
+                    Result.Loading -> {}
                 }
             } else {
                 // 他人主页：也只发一个请求
@@ -86,7 +87,7 @@ class ProfileViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update { it.copy(isLoading = false, error = result.message) }
                     }
-                    else -> {}
+                    Result.Loading -> {}
                 }
             }
         }
@@ -95,9 +96,9 @@ class ProfileViewModel @Inject constructor(
     fun loadNotes(isRefresh: Boolean = false) {
         val currentProfile = _uiState.value.profile ?: return
         if (isRefresh) {
-            _uiState.update { it.copy(notesLoading = true) }
+            _uiState.update { it.copy(notesLoading = true, loadMoreFailed = false) }
         } else {
-            if (_uiState.value.notesLoading || !_uiState.value.notesHasMore) return
+            if (_uiState.value.notesLoading || !_uiState.value.notesHasMore || _uiState.value.loadMoreFailed) return
             _uiState.update { it.copy(notesLoading = true) }
         }
 
@@ -115,14 +116,15 @@ class ProfileViewModel @Inject constructor(
                             notes = if (isRefresh) pageData.items else state.notes + pageData.items,
                             notesCurrentPage = pageData.page,
                             notesHasMore = pageData.hasMore,
-                            notesLoading = false
+                            notesLoading = false,
+                            loadMoreFailed = false
                         )
                     }
                 }
                 is Result.Error -> {
-                    _uiState.update { it.copy(notesLoading = false, error = result.message) }
+                    _uiState.update { it.copy(notesLoading = false, error = result.message, loadMoreFailed = true) }
                 }
-                else -> {}
+                Result.Loading -> {}
             }
         }
     }

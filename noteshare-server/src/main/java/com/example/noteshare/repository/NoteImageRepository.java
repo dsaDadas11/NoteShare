@@ -9,5 +9,7 @@ public interface NoteImageRepository extends JpaRepository<NoteImage, Long> {
 
     List<NoteImage> findByNoteIdOrderBySortAsc(Long noteId);
 
+    List<NoteImage> findByNoteIdInOrderByNoteIdAscSortAsc(List<Long> noteIds);
+
     void deleteByNoteId(Long noteId);
 }

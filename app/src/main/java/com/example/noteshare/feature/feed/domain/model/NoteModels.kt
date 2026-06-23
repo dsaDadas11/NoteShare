@@ -27,7 +27,8 @@ data class NoteResponse(
     val commentCount: Int = 0,
     val createdAt: String,
     val author: UserBrief,
-    val images: List<ImageInfo> = emptyList()
+    val images: List<ImageInfo> = emptyList(),
+    val videoUrl: String? = null
 )
 
 @Serializable
@@ -42,7 +43,8 @@ data class NoteDetailResponse(
     @SerialName("authorSelf") val isAuthorSelf: Boolean = false,
     val createdAt: String,
     val author: UserBrief,
-    val images: List<ImageInfo> = emptyList()
+    val images: List<ImageInfo> = emptyList(),
+    val videoUrl: String? = null
 )
 
 @Serializable
@@ -50,12 +52,23 @@ data class CommentResponse(
     val id: Long,
     val content: String,
     val createdAt: String,
-    @SerialName("author") val user: UserBrief
+    @SerialName("author") val user: UserBrief,
+    @SerialName("mine") val isMine: Boolean = false,
+    val parentId: Long? = null,
+    val likeCount: Int = 0,
+    val liked: Boolean = false,
+    val replyCount: Int = 0,
+    val replies: List<CommentResponse> = emptyList(),
+    /** 回复目标作者昵称（楼中楼展示用） */
+    val replyToAuthor: String? = null
 )
 
 @Serializable
 data class CreateCommentRequest(
-    val content: String
+    val content: String,
+    val parentId: Long? = null,
+    /** 回复目标作者昵称（楼中楼展示用） */
+    val replyToAuthor: String? = null
 )
 
 
@@ -63,5 +76,6 @@ data class CreateCommentRequest(
 data class CreateNoteRequest(
     val title: String,
     val content: String,
-    val imageUrls: List<String>
+    val imageUrls: List<String>,
+    val videoUrl: String? = null
 )

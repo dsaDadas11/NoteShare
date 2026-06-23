@@ -76,11 +76,63 @@ class NoteDetailRepository @Inject constructor(
         }
     }
 
-    suspend fun createComment(id: Long, content: String): Result<CommentResponse> {
+    suspend fun createComment(id: Long, content: String, parentId: Long? = null, replyToAuthor: String? = null): Result<CommentResponse> {
         return try {
-            val response = noteApi.createComment(id, CreateCommentRequest(content))
+            val response = noteApi.createComment(id, CreateCommentRequest(content, parentId, replyToAuthor))
             if (response.code == ErrorCode.SUCCESS && response.data != null) {
                 Result.Success(response.data)
+            } else {
+                Result.Error(response.code, response.message)
+            }
+        } catch (e: Exception) {
+            Result.Error(ErrorCode.NETWORK_ERROR, "网络请求失败: ${e.message}")
+        }
+    }
+
+    suspend fun deleteComment(id: Long, commentId: Long): Result<Unit> {
+        return try {
+            val response = noteApi.deleteComment(id, commentId)
+            if (response.code == ErrorCode.SUCCESS) {
+                Result.Success(Unit)
+            } else {
+                Result.Error(response.code, response.message)
+            }
+        } catch (e: Exception) {
+            Result.Error(ErrorCode.NETWORK_ERROR, "网络请求失败: ${e.message}")
+        }
+    }
+
+    suspend fun getCommentReplies(noteId: Long, commentId: Long): Result<List<CommentResponse>> {
+        return try {
+            val response = noteApi.getCommentReplies(noteId, commentId)
+            if (response.code == ErrorCode.SUCCESS && response.data != null) {
+                Result.Success(response.data)
+            } else {
+                Result.Error(response.code, response.message)
+            }
+        } catch (e: Exception) {
+            Result.Error(ErrorCode.NETWORK_ERROR, "网络请求失败: ${e.message}")
+        }
+    }
+
+    suspend fun likeComment(noteId: Long, commentId: Long): Result<Unit> {
+        return try {
+            val response = noteApi.likeComment(noteId, commentId)
+            if (response.code == ErrorCode.SUCCESS) {
+                Result.Success(Unit)
+            } else {
+                Result.Error(response.code, response.message)
+            }
+        } catch (e: Exception) {
+            Result.Error(ErrorCode.NETWORK_ERROR, "网络请求失败: ${e.message}")
+        }
+    }
+
+    suspend fun unlikeComment(noteId: Long, commentId: Long): Result<Unit> {
+        return try {
+            val response = noteApi.unlikeComment(noteId, commentId)
+            if (response.code == ErrorCode.SUCCESS) {
+                Result.Success(Unit)
             } else {
                 Result.Error(response.code, response.message)
             }

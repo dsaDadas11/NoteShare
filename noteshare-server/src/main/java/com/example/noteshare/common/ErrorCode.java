@@ -42,12 +42,19 @@ public enum ErrorCode {
 
     // ===== 评论 (405xx) =====
     COMMENT_CONTENT_REQUIRED(40500, "评论内容不能为空"),
+    COMMENT_NOT_FOUND(40501, "评论不存在"),
+    COMMENT_FORBIDDEN(40502, "无权删除该评论"),
+    COMMENT_PARENT_NOT_FOUND(40503, "父评论不存在"),
+    COMMENT_LIKE_ALREADY(40510, "已经点赞过该评论"),
+    COMMENT_LIKE_NOT_FOUND(40511, "未点赞该评论"),
 
     // ===== 文件上传 (406xx) =====
     FILE_EMPTY(40600, "文件不能为空"),
     FILE_TYPE_NOT_ALLOWED(40601, "仅支持 jpg/png/gif/webp 格式"),
     FILE_TOO_LARGE(40602, "单张图片不能超过 5MB"),
-    FILE_UPLOAD_FAILED(40603, "文件上传失败");
+    FILE_UPLOAD_FAILED(40603, "文件上传失败"),
+    VIDEO_TYPE_NOT_ALLOWED(40604, "仅支持 mp4/webm/3gpp 视频格式"),
+    VIDEO_TOO_LARGE(40605, "单个视频不能超过 50MB");
 
     private final int code;
     private final String message;

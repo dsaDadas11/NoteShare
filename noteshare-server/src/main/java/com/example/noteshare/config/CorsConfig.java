@@ -6,7 +6,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
  * CORS 跨域配置
- * 课设阶段允许所有来源，Android 端直连无跨域但为 Web 测试预留
+ * 允许本地开发环境和局域网测试地址（Android 模拟器 / 真机调试）
  */
 @Configuration
 public class CorsConfig implements WebMvcConfigurer {
@@ -14,7 +14,13 @@ public class CorsConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/api/**")
-                .allowedOriginPatterns("*")
+                .allowedOriginPatterns(
+                        "http://localhost:*",
+                        "http://127.0.0.1:*",
+                        "http://10.0.2.2:*",
+                        "http://192.168.*:*",
+                        "http://10.*:*"
+                )
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true)

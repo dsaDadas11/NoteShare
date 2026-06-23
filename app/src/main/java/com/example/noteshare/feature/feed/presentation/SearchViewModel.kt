@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -21,7 +22,8 @@ data class SearchUiState(
     val currentPage: Int = 1,
     val hasMore: Boolean = true,
     val error: String? = null,
-    val hasSearched: Boolean = false
+    val hasSearched: Boolean = false,
+    val loadMoreFailed: Boolean = false
 )
 
 @HiltViewModel
@@ -70,14 +72,14 @@ class SearchViewModel @Inject constructor(
                 is Result.Error -> {
                     _uiState.update { it.copy(isLoading = false, error = result.message) }
                 }
-                else -> {}
+                Result.Loading -> {}
             }
         }
     }
 
     fun loadMore() {
         val currentState = _uiState.value
-        if (currentState.isLoading || currentState.isLoadingMore || !currentState.hasMore) return
+        if (currentState.isLoading || currentState.isLoadingMore || !currentState.hasMore || currentState.loadMoreFailed) return
 
         _uiState.update { it.copy(isLoadingMore = true, error = null) }
         val nextPage = currentState.currentPage + 1
@@ -90,14 +92,20 @@ class SearchViewModel @Inject constructor(
                             isLoadingMore = false,
                             results = state.results + result.data.items,
                             currentPage = result.data.page,
-                            hasMore = result.data.hasMore
+                            hasMore = result.data.hasMore,
+                            loadMoreFailed = false
                         )
                     }
                 }
                 is Result.Error -> {
-                    _uiState.update { it.copy(isLoadingMore = false, error = result.message) }
+                    _uiState.update { it.copy(isLoadingMore = false, error = result.message, loadMoreFailed = true) }
+                    // Reset loadMoreFailed after 3 seconds to allow retry
+                    viewModelScope.launch {
+                        delay(3000)
+                        _uiState.update { it.copy(loadMoreFailed = false) }
+                    }
                 }
-                else -> {}
+                Result.Loading -> {}
             }
         }
     }

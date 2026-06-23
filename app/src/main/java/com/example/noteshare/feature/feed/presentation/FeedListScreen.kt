@@ -1,9 +1,11 @@
 package com.example.noteshare.feature.feed.presentation
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
+import androidx.compose.foundation.lazy.staggeredgrid.items
+import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
@@ -11,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -27,7 +30,7 @@ fun FeedListScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    val listState = rememberLazyListState()
+    val gridState = rememberLazyStaggeredGridState()
 
     LaunchedEffect(refreshSignal) {
         if (refreshSignal != null) {
@@ -36,12 +39,12 @@ fun FeedListScreen(
     }
 
     // Load more trigger
-    LaunchedEffect(listState) {
+    LaunchedEffect(gridState) {
         snapshotFlow {
-            val layoutInfo = listState.layoutInfo
+            val layoutInfo = gridState.layoutInfo
             val totalItemsNumber = layoutInfo.totalItemsCount
             val lastVisibleItemIndex = (layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) + 1
-            lastVisibleItemIndex > (totalItemsNumber - 3)
+            lastVisibleItemIndex > (totalItemsNumber - 4)
         }.collect { shouldLoadMore ->
             if (shouldLoadMore) {
                 viewModel.loadMore()
@@ -60,7 +63,9 @@ fun FeedListScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("随记") },
+                title = { 
+                    Text("发现", fontWeight = FontWeight.Bold) 
+                },
                 actions = {
                     IconButton(onClick = { viewModel.refresh() }) {
                         Icon(imageVector = Icons.Default.Refresh, contentDescription = "刷新")
@@ -68,9 +73,14 @@ fun FeedListScreen(
                     IconButton(onClick = onNavigateToSearch) {
                         Icon(imageVector = Icons.Default.Search, contentDescription = "搜索")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                )
             )
-        }
+        },
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Box(
             modifier = Modifier
@@ -86,10 +96,13 @@ fun FeedListScreen(
                     )
                 }
             } else {
-                LazyColumn(
-                    state = listState,
+                LazyVerticalStaggeredGrid(
+                    columns = StaggeredGridCells.Fixed(2),
+                    state = gridState,
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(vertical = 8.dp)
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalItemSpacing = 8.dp
                 ) {
                     items(uiState.notes) { note ->
                         NoteCard(
@@ -98,15 +111,17 @@ fun FeedListScreen(
                             authorName = note.author.nickname ?: note.author.username,
                             authorAvatarUrl = note.author.avatarUrl,
                             imageUrl = note.images.firstOrNull()?.url,
+                            videoUrl = note.videoUrl,
                             likeCount = note.likeCount,
                             commentCount = note.commentCount,
                             onClick = { onNavigateToDetail(note.id) },
-                            onAuthorClick = { onNavigateToProfile(note.author.id) }
+                            onAuthorClick = { onNavigateToProfile(note.author.id) },
+                            modifier = Modifier.fillMaxWidth() // Important for staggered grid item
                         )
                     }
 
                     if (uiState.isLoadingMore) {
-                        item {
+                        item(span = StaggeredGridItemSpan.FullLine) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -117,7 +132,7 @@ fun FeedListScreen(
                             }
                         }
                     } else if (!uiState.hasMore && uiState.notes.isNotEmpty()) {
-                        item {
+                        item(span = StaggeredGridItemSpan.FullLine) {
                             Text(
                                 text = "没有更多内容了",
                                 modifier = Modifier

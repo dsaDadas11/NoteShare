@@ -30,8 +30,15 @@ public class FileService {
             "image/jpeg", "image/png", "image/gif", "image/webp"
     );
 
+    private static final Set<String> ALLOWED_VIDEO_TYPES = Set.of(
+            "video/mp4", "video/webm", "video/3gpp"
+    );
+
     @Value("${file.max-size}")
     private long maxSize;
+
+    @Value("${file.video-max-size}")
+    private long videoMaxSize;
 
     /**
      * 上传单张图片，返回可访问 URL
@@ -74,12 +81,55 @@ public class FileService {
         return "/uploads/" + dateDir + "/" + filename;
     }
 
+    /**
+     * 上传视频文件，返回可访问 URL
+     */
+    public String uploadVideo(MultipartFile file) {
+        if (file.isEmpty()) {
+            throw new BusinessException(ErrorCode.FILE_EMPTY);
+        }
+
+        String contentType = normalizeContentType(file.getContentType());
+        if (!ALLOWED_VIDEO_TYPES.contains(contentType)) {
+            throw new BusinessException(ErrorCode.VIDEO_TYPE_NOT_ALLOWED);
+        }
+
+        if (file.getSize() > videoMaxSize) {
+            throw new BusinessException(ErrorCode.VIDEO_TOO_LARGE);
+        }
+
+        String ext = getVideoExtension(contentType);
+        String filename = UUID.randomUUID().toString().replace("-", "") + ext;
+
+        String dateDir = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        Path dirPath = Path.of(uploadDir).toAbsolutePath().normalize().resolve(dateDir);
+        Path targetPath = dirPath.resolve(filename).normalize();
+        try {
+            Files.createDirectories(dirPath);
+            try (InputStream inputStream = file.getInputStream()) {
+                Files.copy(inputStream, targetPath, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } catch (IOException e) {
+            throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED);
+        }
+
+        return "/uploads/" + dateDir + "/" + filename;
+    }
+
     private String getExtension(String contentType) {
         return switch (contentType) {
             case "image/png" -> ".png";
             case "image/gif" -> ".gif";
             case "image/webp" -> ".webp";
             default -> ".jpg";
+        };
+    }
+
+    private String getVideoExtension(String contentType) {
+        return switch (contentType) {
+            case "video/webm" -> ".webm";
+            case "video/3gpp" -> ".3gp";
+            default -> ".mp4";
         };
     }
 

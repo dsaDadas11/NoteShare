@@ -24,7 +24,7 @@ class NotificationRepository @Inject constructor(
         }
     }
 
-    suspend fun getUnreadCount(): Result<Long> {
+    suspend fun getUnreadCount(): Result<Int> {
         return try {
             val response = notificationApi.getUnreadCount()
             if (response.code == ErrorCode.SUCCESS && response.data != null) {
