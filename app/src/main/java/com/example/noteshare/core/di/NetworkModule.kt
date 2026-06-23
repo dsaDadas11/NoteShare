@@ -74,4 +74,10 @@ object NetworkModule {
     fun provideUserApi(retrofit: Retrofit): com.example.noteshare.feature.profile.data.UserApi {
         return retrofit.create(com.example.noteshare.feature.profile.data.UserApi::class.java)
     }
+
+    @Provides
+    @Singleton
+    fun provideNotificationApi(retrofit: Retrofit): com.example.noteshare.feature.notification.data.NotificationApi {
+        return retrofit.create(com.example.noteshare.feature.notification.data.NotificationApi::class.java)
+    }
 }
