@@ -134,6 +134,7 @@ fun SearchScreen(
                             authorName = note.author.nickname ?: note.author.username,
                             authorAvatarUrl = note.author.avatarUrl,
                             imageUrl = note.images.firstOrNull()?.url,
+                            videoUrl = note.videoUrl,
                             likeCount = note.likeCount,
                             commentCount = note.commentCount,
                             onClick = { onNavigateToDetail(note.id) },

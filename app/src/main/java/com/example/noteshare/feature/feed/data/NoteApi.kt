@@ -45,6 +45,30 @@ interface NoteApi {
         @retrofit2.http.Body request: com.example.noteshare.feature.feed.domain.model.CreateCommentRequest
     ): ApiResponse<com.example.noteshare.feature.feed.domain.model.CommentResponse>
 
+    @retrofit2.http.DELETE("/api/notes/{id}/comments/{commentId}")
+    suspend fun deleteComment(
+        @retrofit2.http.Path("id") id: Long,
+        @retrofit2.http.Path("commentId") commentId: Long
+    ): ApiResponse<Unit>
+
+    @GET("/api/notes/{id}/comments/{commentId}/replies")
+    suspend fun getCommentReplies(
+        @retrofit2.http.Path("id") id: Long,
+        @retrofit2.http.Path("commentId") commentId: Long
+    ): ApiResponse<List<com.example.noteshare.feature.feed.domain.model.CommentResponse>>
+
+    @retrofit2.http.POST("/api/notes/{id}/comments/{commentId}/like")
+    suspend fun likeComment(
+        @retrofit2.http.Path("id") id: Long,
+        @retrofit2.http.Path("commentId") commentId: Long
+    ): ApiResponse<Unit>
+
+    @retrofit2.http.DELETE("/api/notes/{id}/comments/{commentId}/like")
+    suspend fun unlikeComment(
+        @retrofit2.http.Path("id") id: Long,
+        @retrofit2.http.Path("commentId") commentId: Long
+    ): ApiResponse<Unit>
+
     @retrofit2.http.POST("/api/notes")
     suspend fun createNote(
         @retrofit2.http.Body request: com.example.noteshare.feature.feed.domain.model.CreateNoteRequest

@@ -12,6 +12,8 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 
 import java.util.stream.Collectors;
 
@@ -36,6 +38,9 @@ public class GlobalExceptionHandler {
             status = HttpStatus.UNAUTHORIZED;
         } else if (code >= 40300 && code < 40400) {
             // 403xx 笔记权限类 → HTTP 403
+            status = HttpStatus.FORBIDDEN;
+        } else if (code == 40502) {
+            // 40502 COMMENT_FORBIDDEN → HTTP 403
             status = HttpStatus.FORBIDDEN;
         }
         return ResponseEntity.status(status).body(ApiResponse.error(e.getErrorCode(), e.getMessage()));
@@ -65,7 +70,7 @@ public class GlobalExceptionHandler {
     /** multipart 文件超过服务端限制 */
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ApiResponse<?>> handleMaxUploadSize(MaxUploadSizeExceededException e) {
-        return ResponseEntity.ok(ApiResponse.error(ErrorCode.FILE_TOO_LARGE));
+        return ResponseEntity.badRequest().body(ApiResponse.error(ErrorCode.FILE_TOO_LARGE));
     }
 
     /** multipart 请求缺少 file 字段 */
@@ -93,6 +98,20 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<?>> handleAccessDenied(AccessDeniedException e) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(ApiResponse.error(ErrorCode.AUTH_FORBIDDEN));
+    }
+
+    /** 数据完整性冲突（重复点赞、重复关注等） */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<?>> handleDataIntegrity(DataIntegrityViolationException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(ErrorCode.PARAM_INVALID, "数据冲突，请勿重复操作"));
+    }
+
+    /** 请求方法不支持 */
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiResponse<?>> handleMethodNotAllowed(HttpRequestMethodNotSupportedException e) {
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
+                .body(ApiResponse.error(ErrorCode.PARAM_INVALID, "不支持的请求方法: " + e.getMethod()));
     }
 
     /** 兜底异常 */

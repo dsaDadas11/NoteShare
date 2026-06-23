@@ -12,6 +12,8 @@ import com.example.noteshare.service.NoteService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 /**
  * 笔记控制器：CRUD + 搜索 + 点赞 + 评论
  */
@@ -51,9 +53,13 @@ public class NoteController {
     /** 搜索笔记（公开，关键词模糊匹配） */
     @GetMapping("/search")
     public ApiResponse<PageResponse<NoteResponse>> searchNotes(
-            @RequestParam String keyword,
+            @RequestParam(defaultValue = "") String keyword,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size) {
+        keyword = keyword.trim();
+        if (keyword.isEmpty()) {
+            return ApiResponse.ok(new PageResponse<>());
+        }
         page = Math.max(1, page);
         size = Math.min(50, Math.max(1, size));
         return ApiResponse.ok(noteService.searchNotes(keyword, page, size));
@@ -98,7 +104,8 @@ public class NoteController {
             @RequestParam(defaultValue = "20") int size) {
         page = Math.max(1, page);
         size = Math.min(50, Math.max(1, size));
-        return ApiResponse.ok(commentService.listComments(id, page, size));
+        Long currentUserId = SecurityUtil.currentUserIdOrNull();
+        return ApiResponse.ok(commentService.listComments(id, currentUserId, page, size));
     }
 
     /** 发表评论（需认证） */
@@ -108,5 +115,44 @@ public class NoteController {
             @Valid @RequestBody CreateCommentRequest req) {
         Long userId = SecurityUtil.currentUserId();
         return ApiResponse.ok(commentService.createComment(userId, id, req));
+    }
+
+    /** 删除评论（需认证，仅评论作者可删） */
+    @DeleteMapping("/{id}/comments/{commentId}")
+    public ApiResponse<Void> deleteComment(@PathVariable Long id,
+                                           @PathVariable Long commentId) {
+        Long userId = SecurityUtil.currentUserId();
+        commentService.deleteComment(userId, id, commentId);
+        return ApiResponse.ok();
+    }
+
+    /** 获取评论的回复列表（公开） */
+    @GetMapping("/{id}/comments/{commentId}/replies")
+    public ApiResponse<List<CommentResponse>> listReplies(
+            @PathVariable Long id,
+            @PathVariable Long commentId) {
+        commentService.validateCommentBelongsToNote(commentId, id);
+        Long currentUserId = SecurityUtil.currentUserIdOrNull();
+        return ApiResponse.ok(commentService.listReplies(commentId, currentUserId));
+    }
+
+    /** 点赞评论（需认证） */
+    @PostMapping("/{id}/comments/{commentId}/like")
+    public ApiResponse<Void> likeComment(@PathVariable Long id,
+                                         @PathVariable Long commentId) {
+        commentService.validateCommentBelongsToNote(commentId, id);
+        Long userId = SecurityUtil.currentUserId();
+        commentService.likeComment(userId, commentId);
+        return ApiResponse.ok();
+    }
+
+    /** 取消点赞评论（需认证） */
+    @DeleteMapping("/{id}/comments/{commentId}/like")
+    public ApiResponse<Void> unlikeComment(@PathVariable Long id,
+                                            @PathVariable Long commentId) {
+        commentService.validateCommentBelongsToNote(commentId, id);
+        Long userId = SecurityUtil.currentUserId();
+        commentService.unlikeComment(userId, commentId);
+        return ApiResponse.ok();
     }
 }

@@ -9,4 +9,8 @@ interface UploadApi {
     @Multipart
     @POST("/api/upload")
     suspend fun uploadImage(@Part file: MultipartBody.Part): ApiResponse<String>
+
+    @Multipart
+    @POST("/api/upload/video")
+    suspend fun uploadVideo(@Part file: MultipartBody.Part): ApiResponse<String>
 }

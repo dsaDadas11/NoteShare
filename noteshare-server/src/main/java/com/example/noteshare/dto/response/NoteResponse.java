@@ -16,6 +16,7 @@ public class NoteResponse {
     private LocalDateTime createdAt;
     private UserBrief author;
     private List<ImageInfo> images;
+    private String videoUrl;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -33,4 +34,6 @@ public class NoteResponse {
     public void setAuthor(UserBrief author) { this.author = author; }
     public List<ImageInfo> getImages() { return images; }
     public void setImages(List<ImageInfo> images) { this.images = images; }
+    public String getVideoUrl() { return videoUrl; }
+    public void setVideoUrl(String videoUrl) { this.videoUrl = videoUrl; }
 }

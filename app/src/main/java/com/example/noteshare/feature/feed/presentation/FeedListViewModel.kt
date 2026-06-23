@@ -10,15 +10,18 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class FeedUiState(
     val notes: List<NoteResponse> = emptyList(),
+    val isLoading: Boolean = false,
     val isLoadingMore: Boolean = false,
     val currentPage: Int = 1,
     val hasMore: Boolean = true,
-    val error: String? = null
+    val error: String? = null,
+    val loadMoreFailed: Boolean = false
 )
 
 @HiltViewModel
@@ -34,6 +37,7 @@ class FeedListViewModel @Inject constructor(
     }
 
     fun refresh() {
+        _uiState.update { it.copy(isLoading = true) }
         viewModelScope.launch {
             when (val result = repository.getNotes(1)) {
                 is Result.Success -> {
@@ -43,27 +47,29 @@ class FeedListViewModel @Inject constructor(
                             notes = pageData.items,
                             currentPage = pageData.page,
                             hasMore = pageData.hasMore,
-                            error = null
+                            error = null,
+                            loadMoreFailed = false,
+                            isLoading = false
                         )
                     }
                 }
                 is Result.Error -> {
                     _uiState.update {
-                        it.copy(error = result.message)
+                        it.copy(error = result.message, isLoading = false)
                     }
                 }
-                else -> {}
+                Result.Loading -> {}
             }
         }
     }
 
     fun loadMore() {
         val currentState = _uiState.value
-        if (currentState.isLoadingMore || !currentState.hasMore) return
-        
+        if (currentState.isLoadingMore || !currentState.hasMore || currentState.loadMoreFailed) return
+
         _uiState.update { it.copy(isLoadingMore = true, error = null) }
         val nextPage = currentState.currentPage + 1
-        
+
         viewModelScope.launch {
             when (val result = repository.getNotes(nextPage)) {
                 is Result.Success -> {
@@ -73,16 +79,22 @@ class FeedListViewModel @Inject constructor(
                             notes = state.notes + pageData.items,
                             currentPage = pageData.page,
                             hasMore = pageData.hasMore,
-                            isLoadingMore = false
+                            isLoadingMore = false,
+                            loadMoreFailed = false
                         )
                     }
                 }
                 is Result.Error -> {
-                    _uiState.update { 
-                        it.copy(isLoadingMore = false, error = result.message) 
+                    _uiState.update {
+                        it.copy(isLoadingMore = false, error = result.message, loadMoreFailed = true)
+                    }
+                    // Reset loadMoreFailed after 3 seconds to allow retry
+                    viewModelScope.launch {
+                        delay(3000)
+                        _uiState.update { it.copy(loadMoreFailed = false) }
                     }
                 }
-                else -> {}
+                Result.Loading -> {}
             }
         }
     }

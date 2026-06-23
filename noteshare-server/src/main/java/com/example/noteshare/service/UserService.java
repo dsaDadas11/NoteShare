@@ -8,6 +8,7 @@ import com.example.noteshare.entity.User;
 import com.example.noteshare.repository.NoteRepository;
 import com.example.noteshare.repository.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class UserService {
@@ -39,6 +40,7 @@ public class UserService {
     /**
      * 编辑资料
      */
+    @Transactional
     public UserResponse updateProfile(Long userId, UpdateProfileRequest req) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));

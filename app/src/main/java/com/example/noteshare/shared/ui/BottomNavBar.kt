@@ -4,17 +4,21 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 
 @Composable
-fun BottomNavBar(navController: NavHostController) {
+fun BottomNavBar(navController: NavHostController, unreadCount: Long = 0) {
     val items = listOf(
         BottomNavItem("feed", "首页", Icons.Default.Home),
         BottomNavItem("publish", "发布", Icons.Default.AddCircle),
@@ -28,10 +32,30 @@ fun BottomNavBar(navController: NavHostController) {
     val showBottomNav = currentRoute in listOf("feed", "publish", "profile")
 
     if (showBottomNav) {
-        NavigationBar {
+        NavigationBar(
+            containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface,
+            tonalElevation = 4.dp
+        ) {
             items.forEach { item ->
                 NavigationBarItem(
-                    icon = { Icon(item.icon, contentDescription = item.title) },
+                    icon = {
+                        if (item.route == "profile" && unreadCount > 0) {
+                            BadgedBox(
+                                badge = {
+                                    Badge {
+                                        Text(
+                                            text = if (unreadCount > 99) "99+" else "$unreadCount",
+                                            fontSize = 10.sp
+                                        )
+                                    }
+                                }
+                            ) {
+                                Icon(item.icon, contentDescription = item.title)
+                            }
+                        } else {
+                            Icon(item.icon, contentDescription = item.title)
+                        }
+                    },
                     label = { Text(item.title) },
                     selected = currentRoute == item.route,
                     onClick = {

@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -27,6 +28,7 @@ fun ProfileScreen(
     onNavigateBack: () -> Unit,
     onNavigateToEditProfile: () -> Unit,
     onNavigateToDetail: (Long) -> Unit,
+    onNavigateToNotification: () -> Unit = {},
     onLogout: () -> Unit,
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
@@ -69,6 +71,12 @@ fun ProfileScreen(
                 },
                 actions = {
                     if (uiState.isMyProfile) {
+                        IconButton(onClick = onNavigateToNotification) {
+                            Icon(
+                                imageVector = Icons.Default.Notifications,
+                                contentDescription = "通知"
+                            )
+                        }
                         IconButton(onClick = { viewModel.refresh() }) {
                             Icon(imageVector = Icons.Default.Refresh, contentDescription = "刷新")
                         }
@@ -196,6 +204,7 @@ fun ProfileScreen(
                                 authorName = note.author.nickname ?: note.author.username,
                                 authorAvatarUrl = note.author.avatarUrl,
                                 imageUrl = note.images.firstOrNull()?.url,
+                                videoUrl = note.videoUrl,
                                 likeCount = note.likeCount,
                                 commentCount = note.commentCount,
                                 onClick = { onNavigateToDetail(note.id) }

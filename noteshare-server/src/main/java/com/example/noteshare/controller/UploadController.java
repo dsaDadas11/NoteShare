@@ -22,4 +22,9 @@ public class UploadController {
     public ApiResponse<String> upload(@RequestParam("file") MultipartFile file) {
         return ApiResponse.ok(fileService.upload(file));
     }
+
+    @PostMapping("/video")
+    public ApiResponse<String> uploadVideo(@RequestParam("file") MultipartFile file) {
+        return ApiResponse.ok(fileService.uploadVideo(file));
+    }
 }

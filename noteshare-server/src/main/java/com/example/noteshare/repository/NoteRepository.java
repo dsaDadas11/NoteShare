@@ -13,17 +13,21 @@ public interface NoteRepository extends JpaRepository<Note, Long> {
     @Query("SELECT n FROM Note n WHERE n.title LIKE %:keyword% OR n.content LIKE %:keyword% ORDER BY n.createdAt DESC")
     Page<Note> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
 
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Query("UPDATE Note n SET n.likeCount = n.likeCount + 1 WHERE n.id = :id")
     void incrementLikeCount(@Param("id") Long id);
 
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Query("UPDATE Note n SET n.likeCount = n.likeCount - 1 WHERE n.id = :id AND n.likeCount > 0")
     void decrementLikeCount(@Param("id") Long id);
 
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Query("UPDATE Note n SET n.commentCount = n.commentCount + 1 WHERE n.id = :id")
     void incrementCommentCount(@Param("id") Long id);
+
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE Note n SET n.commentCount = n.commentCount - 1 WHERE n.id = :id AND n.commentCount > 0")
+    void decrementCommentCount(@Param("id") Long id);
 
     Page<Note> findByAuthorId(Long authorId, Pageable pageable);
 

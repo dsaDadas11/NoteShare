@@ -12,7 +12,7 @@ android {
     compileSdk = 35
     val noteshareBaseUrl = providers
         .gradleProperty("noteshareBaseUrl")
-        .orElse("http://127.0.0.1:8080/")
+        .orElse("http://10.0.2.2:8200/")
         .get()
 
     defaultConfig {
@@ -55,68 +55,71 @@ android {
     }
 }
 
-val ensureNoteshareServer by tasks.registering(Exec::class) {
+val ensureNoteshareServer by tasks.registering {
     group = "noteshare"
-    description = "Start the Spring Boot backend on host tcp:8080 if it is not already running."
-    val serverDir = rootProject.layout.projectDirectory.dir("noteshare-server").asFile.absolutePath
-    val logDir = rootProject.layout.buildDirectory.dir("noteshare-server").get().asFile.absolutePath
-    commandLine(
-        "powershell.exe",
-        "-NoProfile",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-Command",
-        """
-        ${'$'}ErrorActionPreference = 'Stop'
-        function Test-LocalPort {
-            param([int]${'$'}Port)
-            ${'$'}client = [System.Net.Sockets.TcpClient]::new()
-            try {
-                ${'$'}connect = ${'$'}client.BeginConnect('127.0.0.1', ${'$'}Port, ${'$'}null, ${'$'}null)
-                if (-not ${'$'}connect.AsyncWaitHandle.WaitOne(500, ${'$'}false)) {
-                    return ${'$'}false
-                }
-                ${'$'}client.EndConnect(${'$'}connect)
-                return ${'$'}true
-            } catch {
-                return ${'$'}false
-            } finally {
-                ${'$'}client.Close()
+    description = "Start the Spring Boot backend on host tcp:8081 if it is not already running."
+    val serverDir = rootProject.layout.projectDirectory.dir("noteshare-server").asFile
+    val logDir = rootProject.layout.buildDirectory.dir("noteshare-server").get().asFile
+
+    doLast {
+        val port = 8200
+        println("Checking if NoteShare backend is running on port $port...")
+
+        // Lightweight TCP probe
+        fun isPortOpen(): Boolean {
+            return try {
+                val process = ProcessBuilder("cmd.exe", "/c", "netstat -an | findstr \":$port\" | findstr \"LISTENING\"")
+                    .redirectErrorStream(true)
+                    .start()
+                val output = process.inputStream.bufferedReader().readText()
+                process.waitFor()
+                output.isNotBlank()
+            } catch (_: Exception) {
+                false
             }
         }
-        ${'$'}portOpen = Test-LocalPort -Port 8080
-        if (-not ${'$'}portOpen) {
-            ${'$'}serverDir = '$serverDir'
-            ${'$'}logDir = '$logDir'
-            New-Item -ItemType Directory -Force -Path ${'$'}logDir | Out-Null
-            ${'$'}outLog = Join-Path ${'$'}logDir 'spring-boot.out.log'
-            ${'$'}errLog = Join-Path ${'$'}logDir 'spring-boot.err.log'
-            Start-Process `
-                -FilePath 'cmd.exe' `
-                -WorkingDirectory ${'$'}serverDir `
-                -WindowStyle Hidden `
-                -ArgumentList '/c', 'mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=dev"' `
-                -RedirectStandardOutput ${'$'}outLog `
-                -RedirectStandardError ${'$'}errLog
 
-            ${'$'}deadline = (Get-Date).AddSeconds(45)
-            do {
-                Start-Sleep -Seconds 1
-                ${'$'}portOpen = Test-LocalPort -Port 8080
-            } while (-not ${'$'}portOpen -and (Get-Date) -lt ${'$'}deadline)
+        if (!isPortOpen()) {
+            if (!serverDir.exists()) {
+                println("WARNING: Server directory not found: $serverDir")
+                return@doLast
+            }
+            logDir.mkdirs()
+            val outLog = File(logDir, "spring-boot.out.log")
+            val errLog = File(logDir, "spring-boot.err.log")
+            if (outLog.exists()) outLog.delete()
+            if (errLog.exists()) errLog.delete()
+
+            println("Starting NoteShare backend in $serverDir ...")
+            ProcessBuilder("cmd.exe", "/c", "mvnw.cmd", "spring-boot:run", "-Dspring-boot.run.profiles=dev")
+                .directory(serverDir)
+                .redirectOutput(outLog)
+                .redirectError(errLog)
+                .start()
+
+            println("Waiting for backend to start on 127.0.0.1:$port (timeout 60s)...")
+            val deadline = System.currentTimeMillis() + 60_000
+            while (!isPortOpen() && System.currentTimeMillis() < deadline) {
+                Thread.sleep(2000)
+                println("Still waiting...")
+            }
+        } else {
+            println("NoteShare backend is already running on 127.0.0.1:$port")
         }
-        if (-not ${'$'}portOpen) {
-            throw "NoteShare backend did not start on 127.0.0.1:8080. Check $logDir\spring-boot.err.log"
+
+        if (!isPortOpen()) {
+            println("WARNING: NoteShare backend did not start. The app will show network errors until the server is available.")
+        } else {
+            println("NoteShare backend is ready.")
         }
-        """.trimIndent()
-    )
+    }
 }
 
 val adbReverseDebug by tasks.registering(Exec::class) {
     group = "noteshare"
-    description = "Forward Android device tcp:8080 to host tcp:8080 before debug install."
+    description = "Forward Android device tcp:8200 to host tcp:8200 before debug install."
     val adbExecutable = android.sdkDirectory.resolve("platform-tools/adb.exe")
-    commandLine(adbExecutable.absolutePath, "reverse", "tcp:8080", "tcp:8080")
+    commandLine(adbExecutable.absolutePath, "reverse", "tcp:8200", "tcp:8200")
     isIgnoreExitValue = true
     dependsOn(ensureNoteshareServer)
 }
@@ -134,6 +137,7 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.androidx.material.icons.extended)
 
     // Navigation Compose
     implementation(libs.androidx.navigation.compose)
@@ -153,6 +157,10 @@ dependencies {
 
     // Coil
     implementation(libs.coil.compose)
+
+    // Media3 ExoPlayer (for video playback)
+    implementation("androidx.media3:media3-exoplayer:1.4.1")
+    implementation("androidx.media3:media3-ui:1.4.1")
 
     // DataStore
     implementation(libs.androidx.datastore.preferences)

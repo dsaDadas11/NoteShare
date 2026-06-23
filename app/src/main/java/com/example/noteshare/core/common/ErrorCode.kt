@@ -20,6 +20,11 @@ object ErrorCode {
     const val ALREADY_LIKED = 40400
     const val NOT_LIKED = 40401
     const val COMMENT_EMPTY = 40500
+    const val COMMENT_NOT_FOUND = 40501
+    const val COMMENT_FORBIDDEN = 40502
+    const val COMMENT_PARENT_NOT_FOUND = 40503
+    const val COMMENT_LIKE_ALREADY = 40510
+    const val COMMENT_LIKE_NOT_FOUND = 40511
     const val FILE_EMPTY = 40600
     const val FILE_TYPE_INVALID = 40601
     const val FILE_TOO_LARGE = 40602
