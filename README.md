@@ -42,7 +42,8 @@
 1. 环境要求：JDK 17、MySQL 8、Maven。
 2. 数据库配置：
    - 创建名为 `noteshare` 的数据库。
-   - 在 `src/main/resources/application.yml` 中修改数据库连接参数（用户名、密码）。
+   - 设置环境变量 `DB_PASSWORD` 为你的 MySQL 密码（或在 `application-local.yml` 中配置）。
+   - 设置环境变量 `JWT_SECRET` 为一个安全的密钥（至少 64 字节）。
 3. 运行项目：
    - 根目录下执行 `./mvnw spring-boot:run`。
    - 或者使用 IDEA / Eclipse 直接运行主类 `NoteShareApplication`。
@@ -52,9 +53,26 @@
 
 1. 环境要求：Android Studio、Android SDK。
 2. 配置网络：
-   - 确保手机/模拟器与后端服务处于同一局域网内。
-   - 在 `app/src/main/java/com/example/noteshare/core/di/NetworkModule.kt` 或相关的配置文件中，将 `BASE_URL` 修改为你的电脑的局域网 IP 地址（例如 `http://192.168.1.100:8080/`）。注意：不要使用 `localhost` 或 `127.0.0.1`，模拟器可以使用 `10.0.2.2`。
+   - 默认 `BASE_URL` 为 `http://127.0.0.1:8200/`（在 `app/build.gradle.kts` 中定义）。
+   - 如需修改，在项目根目录 `gradle.properties` 中添加：`noteshareBaseUrl=http://你的IP:8200/`
+   - 确保手机/模拟器与后端服务处于同一局域网内。注意：不要使用 `localhost` 或 `127.0.0.1`，模拟器可以使用 `10.0.2.2`。
 3. 运行应用：在 Android Studio 中点击 Run，部署到手机或模拟器上。
+
+## 项目改进记录
+
+### 安全优化
+- HTTP 请求日志仅在 Debug 构建中输出，Release 构建不再记录敏感数据。
+- 移除 Android 端明文流量许可，强制使用 HTTPS。
+- 服务端 JWT 密钥和数据库密码不再硬编码默认值，必须通过环境变量配置。
+
+### 代码质量
+- 统一使用自定义 `Result` 类型，移除无用的 `Loading` 状态。
+- 提取 `safeApiCall` / `safeApiCallUnit` 工具函数，消除 Repository 层重复的 try/catch 样板代码。
+- 提取 `uploadFile` / `uploadVideo` 公共工具，消除文件上传逻辑重复。
+- 修复 `CommentService.listReplies` 的 N+1 查询问题，改用批量加载。
+- 修复 `MainViewModel` 轮询协程的生命周期管理（登出取消、防止重复创建）。
+- 补充客户端缺失的 `ErrorCode` 常量，`RegisterViewModel` 根据错误码显示友好提示。
+- 修复 JPQL 搜索的通配符注入问题。
 
 ## 注意事项
 
