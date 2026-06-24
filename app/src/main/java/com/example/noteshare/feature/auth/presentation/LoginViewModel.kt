@@ -49,7 +49,6 @@ class LoginViewModel @Inject constructor(
                     val errorMsg = if (result.code == ErrorCode.LOGIN_FAILED) "用户名或密码错误" else result.message
                     _uiState.update { it.copy(isLoading = false, error = errorMsg) }
                 }
-                is Result.Loading -> {}
             }
         }
     }

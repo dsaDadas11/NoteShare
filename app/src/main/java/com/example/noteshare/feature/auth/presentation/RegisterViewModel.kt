@@ -2,6 +2,7 @@ package com.example.noteshare.feature.auth.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.noteshare.core.common.ErrorCode
 import com.example.noteshare.core.common.Result
 import com.example.noteshare.feature.auth.data.AuthRepository
 import com.example.noteshare.feature.auth.domain.model.RegisterRequest
@@ -49,9 +50,14 @@ class RegisterViewModel @Inject constructor(
                     _uiState.update { it.copy(isLoading = false, isSuccess = true) }
                 }
                 is Result.Error -> {
-                    _uiState.update { it.copy(isLoading = false, error = result.message) }
+                    val errorMsg = when (result.code) {
+                        ErrorCode.USERNAME_EXISTS -> "用户名已存在"
+                        ErrorCode.USERNAME_FORMAT_INVALID -> "用户名格式不正确（3-50字符，字母数字下划线）"
+                        ErrorCode.PASSWORD_LENGTH_INVALID -> "密码长度需 6-50 字符"
+                        else -> result.message
+                    }
+                    _uiState.update { it.copy(isLoading = false, error = errorMsg) }
                 }
-                is Result.Loading -> {}
             }
         }
     }

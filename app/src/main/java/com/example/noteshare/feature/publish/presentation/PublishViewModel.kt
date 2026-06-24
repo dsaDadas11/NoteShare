@@ -98,10 +98,9 @@ class PublishViewModel @Inject constructor(
                         _uiState.update { it.copy(isLoading = false, error = "图片上传失败: ${uploadResult.message}") }
                         return@launch
                     }
-                    Result.Loading -> {}
                 }
             }
-            
+
             // 2. Upload video
             var uploadedVideoUrl: String? = null
             if (currentState.selectedVideo != null) {
@@ -113,10 +112,9 @@ class PublishViewModel @Inject constructor(
                         _uiState.update { it.copy(isLoading = false, error = "视频上传失败: ${uploadResult.message}") }
                         return@launch
                     }
-                    Result.Loading -> {}
                 }
             }
-            
+
             // 3. Create note
             when (val result = repository.createNote(currentState.title, currentState.content, uploadedUrls, uploadedVideoUrl)) {
                 is Result.Success -> {
@@ -125,7 +123,6 @@ class PublishViewModel @Inject constructor(
                 is Result.Error -> {
                     _uiState.update { it.copy(isLoading = false, error = result.message) }
                 }
-                Result.Loading -> {}
             }
         }
     }

@@ -3,11 +3,13 @@ package com.example.noteshare
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.noteshare.core.common.ErrorCode
+import com.example.noteshare.core.common.Result
 import com.example.noteshare.core.datastore.TokenManager
 import com.example.noteshare.core.network.TokenInterceptor
 import com.example.noteshare.feature.notification.data.NotificationRepository
 import com.example.noteshare.feature.profile.data.UserApi
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -34,6 +36,8 @@ class MainViewModel @Inject constructor(
 
     val unauthorizedEvents = unauthorizedEventBus.events
 
+    private var pollingJob: Job? = null
+
     init {
         checkLoginStatus()
     }
@@ -50,7 +54,6 @@ class MainViewModel @Inject constructor(
                     tokenManager.clearToken()
                     tokenInterceptor.invalidateCache()
                 } else {
-                    // 登录成功后获取未读数并开始轮询
                     fetchUnreadCount()
                     startPollingUnreadCount()
                 }
@@ -71,16 +74,19 @@ class MainViewModel @Inject constructor(
 
     private fun fetchUnreadCount() {
         viewModelScope.launch {
-            notificationRepository.getUnreadCount()
-                .onSuccess { count ->
-                    _unreadCount.value = count.toLong()
+            when (val result = notificationRepository.getUnreadCount()) {
+                is Result.Success -> {
+                    _unreadCount.value = result.data.toLong()
                 }
+                is Result.Error -> { /* ignore */ }
+            }
         }
     }
 
-    /** 每 5 秒轮询未读数 */
+    /** 每 5 秒轮询未读数，自动取消上一次轮询 */
     private fun startPollingUnreadCount() {
-        viewModelScope.launch {
+        pollingJob?.cancel()
+        pollingJob = viewModelScope.launch {
             while (true) {
                 delay(5_000)
                 fetchUnreadCount()
@@ -101,6 +107,8 @@ class MainViewModel @Inject constructor(
     }
 
     fun logout() {
+        pollingJob?.cancel()
+        pollingJob = null
         viewModelScope.launch {
             tokenManager.clearToken()
             tokenInterceptor.invalidateCache()

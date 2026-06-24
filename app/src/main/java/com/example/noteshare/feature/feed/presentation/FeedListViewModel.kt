@@ -58,7 +58,6 @@ class FeedListViewModel @Inject constructor(
                         it.copy(error = result.message, isLoading = false)
                     }
                 }
-                Result.Loading -> {}
             }
         }
     }
@@ -94,7 +93,6 @@ class FeedListViewModel @Inject constructor(
                         _uiState.update { it.copy(loadMoreFailed = false) }
                     }
                 }
-                Result.Loading -> {}
             }
         }
     }

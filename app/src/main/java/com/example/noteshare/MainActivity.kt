@@ -16,6 +16,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.noteshare.core.datastore.TokenManager
 import com.example.noteshare.core.network.TokenInterceptor
+import com.example.noteshare.core.network.UnauthorizedEventBus
 import com.example.noteshare.shared.ui.BottomNavBar
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.compose.runtime.collectAsState
@@ -32,18 +33,7 @@ import com.example.noteshare.feature.notification.presentation.NotificationScree
 import com.example.noteshare.feature.publish.presentation.PublishScreen
 import com.example.noteshare.feature.profile.presentation.ProfileScreen
 import com.example.noteshare.feature.profile.presentation.EditProfileScreen
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import javax.inject.Inject
-import javax.inject.Singleton
-
-/** 全局 401 事件总线 */
-@Singleton
-class UnauthorizedEventBus @Inject constructor() {
-    private val _events = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
-    val events = _events.asSharedFlow()
-    fun emit() { _events.tryEmit(Unit) }
-}
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -209,6 +199,7 @@ fun NoteShareAppScreen(
                     onNavigateBack = { navController.navigateUp() },
                     onNavigateToEditProfile = { },
                     onNavigateToDetail = { noteId -> navController.navigate("note_detail/$noteId") },
+                    onNavigateToNotification = { },
                     onLogout = { }
                 )
             }

@@ -55,7 +55,6 @@ class EditProfileViewModel @Inject constructor(
                 is Result.Error -> {
                     _uiState.update { it.copy(isLoading = false, error = "加载资料失败: ${result.message}") }
                 }
-                Result.Loading -> {}
             }
         }
     }
@@ -95,7 +94,6 @@ class EditProfileViewModel @Inject constructor(
                         _uiState.update { it.copy(isSaving = false, error = "头像上传失败: ${uploadResult.message}") }
                         return@launch
                     }
-                    Result.Loading -> {}
                 }
             }
             
@@ -112,7 +110,6 @@ class EditProfileViewModel @Inject constructor(
                 is Result.Error -> {
                     _uiState.update { it.copy(isSaving = false, error = result.message) }
                 }
-                Result.Loading -> {}
             }
         }
     }

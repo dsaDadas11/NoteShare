@@ -84,7 +84,6 @@ class NoteDetailViewModel @Inject constructor(
                 is Result.Error -> {
                     _uiState.update { it.copy(isLoading = false, error = result.message) }
                 }
-                Result.Loading -> {}
             }
         }
     }
@@ -115,7 +114,6 @@ class NoteDetailViewModel @Inject constructor(
                 is Result.Error -> {
                     _uiState.update { it.copy(commentsLoading = false, error = result.message) }
                 }
-                Result.Loading -> {}
             }
         }
     }
@@ -207,7 +205,6 @@ class NoteDetailViewModel @Inject constructor(
                 is Result.Error -> {
                     _uiState.update { it.copy(isDeleting = false, error = "删除失败: ${result.message}") }
                 }
-                Result.Loading -> {}
             }
         }
     }
@@ -309,7 +306,6 @@ class NoteDetailViewModel @Inject constructor(
                 is Result.Error -> {
                     _uiState.update { it.copy(isSendingComment = false, error = "发送失败: ${result.message}") }
                 }
-                Result.Loading -> {}
             }
         }
     }
@@ -378,7 +374,6 @@ class NoteDetailViewModel @Inject constructor(
                 is Result.Error -> {
                     _uiState.update { it.copy(deletingCommentId = null, error = "删除评论失败: ${result.message}") }
                 }
-                Result.Loading -> {}
             }
         }
     }
@@ -409,7 +404,6 @@ class NoteDetailViewModel @Inject constructor(
                 is Result.Error -> {
                     _uiState.update { it.copy(loadingReplies = null, error = "加载回复失败: ${result.message}") }
                 }
-                Result.Loading -> {}
             }
         }
     }

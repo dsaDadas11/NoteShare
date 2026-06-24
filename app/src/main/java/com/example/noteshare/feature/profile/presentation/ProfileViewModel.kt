@@ -69,7 +69,6 @@ class ProfileViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update { it.copy(isLoading = false, error = result.message) }
                     }
-                    Result.Loading -> {}
                 }
             } else {
                 // 他人主页：也只发一个请求
@@ -87,7 +86,6 @@ class ProfileViewModel @Inject constructor(
                     is Result.Error -> {
                         _uiState.update { it.copy(isLoading = false, error = result.message) }
                     }
-                    Result.Loading -> {}
                 }
             }
         }
@@ -124,7 +122,6 @@ class ProfileViewModel @Inject constructor(
                 is Result.Error -> {
                     _uiState.update { it.copy(notesLoading = false, error = result.message, loadMoreFailed = true) }
                 }
-                Result.Loading -> {}
             }
         }
     }

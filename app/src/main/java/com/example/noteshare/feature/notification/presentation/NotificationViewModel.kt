@@ -2,6 +2,7 @@ package com.example.noteshare.feature.notification.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.noteshare.core.common.Result
 import com.example.noteshare.feature.notification.data.NotificationRepository
 import com.example.noteshare.feature.notification.domain.model.NotificationResponse
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -37,21 +38,22 @@ class NotificationViewModel @Inject constructor(
         if (_uiState.value.isLoading) return
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-            notificationRepository.getNotifications(page = 1)
-                .onSuccess { pageData ->
+            when (val result = notificationRepository.getNotifications(page = 1)) {
+                is Result.Success -> {
                     _uiState.value = _uiState.value.copy(
-                        notifications = pageData.items,
+                        notifications = result.data.items,
                         isLoading = false,
                         currentPage = 1,
-                        hasMore = pageData.hasMore
+                        hasMore = result.data.hasMore
                     )
                 }
-                .onFailure { e ->
+                is Result.Error -> {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        error = e.message
+                        error = result.message
                     )
                 }
+            }
         }
     }
 
@@ -60,18 +62,19 @@ class NotificationViewModel @Inject constructor(
         val nextPage = _uiState.value.currentPage + 1
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoadingMore = true)
-            notificationRepository.getNotifications(page = nextPage)
-                .onSuccess { pageData ->
+            when (val result = notificationRepository.getNotifications(page = nextPage)) {
+                is Result.Success -> {
                     _uiState.value = _uiState.value.copy(
-                        notifications = _uiState.value.notifications + pageData.items,
+                        notifications = _uiState.value.notifications + result.data.items,
                         isLoadingMore = false,
                         currentPage = nextPage,
-                        hasMore = pageData.hasMore
+                        hasMore = result.data.hasMore
                     )
                 }
-                .onFailure {
+                is Result.Error -> {
                     _uiState.value = _uiState.value.copy(isLoadingMore = false)
                 }
+            }
         }
     }
 

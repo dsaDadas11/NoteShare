@@ -9,6 +9,7 @@ object ErrorCode {
     const val LOGIN_FAILED = 40020
     const val AUTH_TOKEN_MISSING = 40100
     const val AUTH_TOKEN_INVALID = 40101
+    const val AUTH_TOKEN_EXPIRED = 40102
     const val NOT_LOGGED_IN = 40103
     const val FORBIDDEN = 40104
     const val USER_NOT_FOUND = 40200
@@ -17,6 +18,9 @@ object ErrorCode {
     const val NOT_FOLLOWING = 40212
     const val NOTE_NOT_FOUND = 40300
     const val NOTE_FORBIDDEN = 40301
+    const val NOTE_TITLE_REQUIRED = 40310
+    const val NOTE_TITLE_TOO_LONG = 40311
+    const val NOTE_CONTENT_REQUIRED = 40312
     const val ALREADY_LIKED = 40400
     const val NOT_LIKED = 40401
     const val COMMENT_EMPTY = 40500
@@ -29,6 +33,8 @@ object ErrorCode {
     const val FILE_TYPE_INVALID = 40601
     const val FILE_TOO_LARGE = 40602
     const val FILE_UPLOAD_FAILED = 40603
+    const val VIDEO_TYPE_NOT_ALLOWED = 40604
+    const val VIDEO_TOO_LARGE = 40605
     const val SERVER_ERROR = 50000
 
     const val NETWORK_ERROR = -1

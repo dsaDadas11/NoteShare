@@ -10,7 +10,7 @@ import org.springframework.data.repository.query.Param;
 
 public interface NoteRepository extends JpaRepository<Note, Long> {
 
-    @Query("SELECT n FROM Note n WHERE n.title LIKE %:keyword% OR n.content LIKE %:keyword% ORDER BY n.createdAt DESC")
+    @Query("SELECT n FROM Note n WHERE n.title LIKE CONCAT('%', :keyword, '%') OR n.content LIKE CONCAT('%', :keyword, '%') ORDER BY n.createdAt DESC")
     Page<Note> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
 
     @Modifying(clearAutomatically = true)

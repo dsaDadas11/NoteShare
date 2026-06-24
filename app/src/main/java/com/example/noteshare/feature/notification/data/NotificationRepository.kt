@@ -1,6 +1,7 @@
 package com.example.noteshare.feature.notification.data
 
 import com.example.noteshare.core.common.ErrorCode
+import com.example.noteshare.core.common.Result
 import com.example.noteshare.core.network.PageData
 import com.example.noteshare.feature.notification.domain.model.NotificationResponse
 import com.example.noteshare.feature.notification.domain.model.UnreadCountResponse
@@ -15,12 +16,12 @@ class NotificationRepository @Inject constructor(
         return try {
             val response = notificationApi.getNotifications(page, size)
             if (response.code == ErrorCode.SUCCESS && response.data != null) {
-                Result.success(response.data)
+                Result.Success(response.data)
             } else {
-                Result.failure(Exception(response.message ?: "获取通知失败"))
+                Result.Error(response.code, response.message ?: "获取通知失败")
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.Error(ErrorCode.NETWORK_ERROR, "网络请求失败: ${e.message}")
         }
     }
 
@@ -28,12 +29,12 @@ class NotificationRepository @Inject constructor(
         return try {
             val response = notificationApi.getUnreadCount()
             if (response.code == ErrorCode.SUCCESS && response.data != null) {
-                Result.success(response.data.count)
+                Result.Success(response.data.count)
             } else {
-                Result.failure(Exception(response.message ?: "获取未读数失败"))
+                Result.Error(response.code, response.message ?: "获取未读数失败")
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.Error(ErrorCode.NETWORK_ERROR, "网络请求失败: ${e.message}")
         }
     }
 
@@ -41,12 +42,12 @@ class NotificationRepository @Inject constructor(
         return try {
             val response = notificationApi.markAllAsRead()
             if (response.code == ErrorCode.SUCCESS) {
-                Result.success(Unit)
+                Result.Success(Unit)
             } else {
-                Result.failure(Exception(response.message ?: "标记已读失败"))
+                Result.Error(response.code, response.message ?: "标记已读失败")
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.Error(ErrorCode.NETWORK_ERROR, "网络请求失败: ${e.message}")
         }
     }
 }

@@ -72,7 +72,6 @@ class SearchViewModel @Inject constructor(
                 is Result.Error -> {
                     _uiState.update { it.copy(isLoading = false, error = result.message) }
                 }
-                Result.Loading -> {}
             }
         }
     }
@@ -105,7 +104,6 @@ class SearchViewModel @Inject constructor(
                         _uiState.update { it.copy(loadMoreFailed = false) }
                     }
                 }
-                Result.Loading -> {}
             }
         }
     }

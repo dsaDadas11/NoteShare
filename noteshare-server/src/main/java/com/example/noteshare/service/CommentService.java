@@ -75,7 +75,12 @@ public class CommentService {
         // 触发评论通知（仅保存到数据库）
         notificationService.createCommentNotification(userId, noteId, req.getContent());
 
-        return buildCommentResponse(comment, userId);
+        // 使用批量版本构建响应（单条评论，直接构造 map/set）
+        Map<Long, User> userMap = userRepository.findById(userId)
+                .map(u -> Map.of(userId, u))
+                .orElse(Collections.emptyMap());
+        Set<Long> likedCommentIds = Collections.emptySet();
+        return buildCommentResponse(comment, userId, userMap, likedCommentIds);
     }
 
     /**
@@ -145,8 +150,25 @@ public class CommentService {
      */
     public List<CommentResponse> listReplies(Long commentId, Long currentUserId) {
         List<Comment> replies = commentRepository.findByParentIdOrderByCreatedAtAsc(commentId);
+        if (replies.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 批量加载用户信息
+        Set<Long> userIds = replies.stream().map(Comment::getUserId).collect(Collectors.toSet());
+        Map<Long, User> userMap = userRepository.findAllById(userIds).stream()
+                .collect(Collectors.toMap(User::getId, Function.identity()));
+
+        // 批量加载点赞状态
+        List<Long> replyIds = replies.stream().map(Comment::getId).toList();
+        Set<Long> likedCommentIds = Collections.emptySet();
+        if (currentUserId != null) {
+            likedCommentIds = new HashSet<>(commentLikeRelRepository.findCommentIdByUserIdAndCommentIdIn(currentUserId, replyIds));
+        }
+        Set<Long> finalLikedCommentIds = likedCommentIds;
+
         return replies.stream()
-                .map(r -> buildCommentResponse(r, currentUserId))
+                .map(r -> buildCommentResponse(r, currentUserId, userMap, finalLikedCommentIds))
                 .toList();
     }
 
@@ -277,22 +299,5 @@ public class CommentService {
         return resp;
     }
 
-    private CommentResponse buildCommentResponse(Comment comment, Long currentUserId) {
-        CommentResponse resp = new CommentResponse();
-        resp.setId(comment.getId());
-        resp.setContent(comment.getContent());
-        resp.setCreatedAt(comment.getCreatedAt());
-        resp.setParentId(comment.getParentId());
-        resp.setLikeCount(comment.getLikeCount() != null ? comment.getLikeCount() : 0);
-        resp.setReplyCount(comment.getReplyCount() != null ? comment.getReplyCount() : 0);
-        resp.setReplyToAuthor(comment.getReplyToAuthor());
-        resp.setMine(currentUserId != null && currentUserId.equals(comment.getUserId()));
-        if (currentUserId != null) {
-            resp.setLiked(commentLikeRelRepository.existsByUserIdAndCommentId(currentUserId, comment.getId()));
-        }
-        resp.setAuthor(userRepository.findById(comment.getUserId())
-                .map(u -> new UserBrief(u.getId(), u.getUsername(), u.getNickname(), u.getAvatarUrl()))
-                .orElse(new UserBrief(comment.getUserId(), "unknown", "已注销用户", null)));
-        return resp;
-    }
+
 }
