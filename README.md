@@ -58,22 +58,6 @@
    - 确保手机/模拟器与后端服务处于同一局域网内。注意：不要使用 `localhost` 或 `127.0.0.1`，模拟器可以使用 `10.0.2.2`。
 3. 运行应用：在 Android Studio 中点击 Run，部署到手机或模拟器上。
 
-## 项目改进记录
-
-### 安全优化
-- HTTP 请求日志仅在 Debug 构建中输出，Release 构建不再记录敏感数据。
-- 移除 Android 端明文流量许可，强制使用 HTTPS。
-- 服务端 JWT 密钥和数据库密码不再硬编码默认值，必须通过环境变量配置。
-
-### 代码质量
-- 统一使用自定义 `Result` 类型，移除无用的 `Loading` 状态。
-- 提取 `safeApiCall` / `safeApiCallUnit` 工具函数，消除 Repository 层重复的 try/catch 样板代码。
-- 提取 `uploadFile` / `uploadVideo` 公共工具，消除文件上传逻辑重复。
-- 修复 `CommentService.listReplies` 的 N+1 查询问题，改用批量加载。
-- 修复 `MainViewModel` 轮询协程的生命周期管理（登出取消、防止重复创建）。
-- 补充客户端缺失的 `ErrorCode` 常量，`RegisterViewModel` 根据错误码显示友好提示。
-- 修复 JPQL 搜索的通配符注入问题。
-
 ## 注意事项
 
 - 项目中上传的图片保存在后端的本地 `uploads` 文件夹中，如果清理了该文件夹，对应的图片资源将无法访问。
