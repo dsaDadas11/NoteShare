@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.noteshare.core.common.ErrorCode
 import com.example.noteshare.core.common.Result
-import com.example.noteshare.core.network.ApiResponse
 import com.example.noteshare.feature.feed.data.NoteDetailRepository
 import com.example.noteshare.feature.feed.domain.model.CommentResponse
 import com.example.noteshare.feature.feed.domain.model.NoteDetailResponse

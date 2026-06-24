@@ -3,10 +3,8 @@ package com.example.noteshare.service;
 import com.example.noteshare.common.BusinessException;
 import com.example.noteshare.common.ErrorCode;
 import com.example.noteshare.entity.LikeRel;
-import com.example.noteshare.entity.Notification;
 import com.example.noteshare.repository.LikeRelRepository;
 import com.example.noteshare.repository.NoteRepository;
-import com.example.noteshare.websocket.NotificationWebSocketHandler;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,16 +14,13 @@ public class LikeService {
     private final LikeRelRepository likeRelRepository;
     private final NoteRepository noteRepository;
     private final NotificationService notificationService;
-    private final NotificationWebSocketHandler webSocketHandler;
 
     public LikeService(LikeRelRepository likeRelRepository,
                        NoteRepository noteRepository,
-                       NotificationService notificationService,
-                       NotificationWebSocketHandler webSocketHandler) {
+                       NotificationService notificationService) {
         this.likeRelRepository = likeRelRepository;
         this.noteRepository = noteRepository;
         this.notificationService = notificationService;
-        this.webSocketHandler = webSocketHandler;
     }
 
     @Transactional
@@ -46,11 +41,8 @@ public class LikeService {
         // 更新计数
         noteRepository.incrementLikeCount(noteId);
 
-        // 触发通知
-        Notification notification = notificationService.createLikeNotification(userId, noteId);
-        if (notification != null) {
-            webSocketHandler.sendNotification(notification.getReceiverId(), buildNotificationData(notification));
-        }
+        // 触发通知（仅保存到数据库）
+        notificationService.createLikeNotification(userId, noteId);
     }
 
     @Transactional
@@ -60,15 +52,5 @@ public class LikeService {
         }
         likeRelRepository.deleteByUserIdAndNoteId(userId, noteId);
         noteRepository.decrementLikeCount(noteId);
-    }
-
-    private Object buildNotificationData(Notification notification) {
-        return new Object() {
-            public final Long getNotificationId() { return notification.getId(); }
-            public final String getType() { return notification.getType(); }
-            public final Long getSenderId() { return notification.getSenderId(); }
-            public final Long getNoteId() { return notification.getNoteId(); }
-            public final String getCreatedAt() { return notification.getCreatedAt().toString(); }
-        };
     }
 }

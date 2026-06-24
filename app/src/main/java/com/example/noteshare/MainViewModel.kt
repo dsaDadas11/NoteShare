@@ -4,16 +4,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.noteshare.core.common.ErrorCode
 import com.example.noteshare.core.datastore.TokenManager
-import com.example.noteshare.core.network.NotificationWebSocketClient
 import com.example.noteshare.core.network.TokenInterceptor
 import com.example.noteshare.feature.notification.data.NotificationRepository
 import com.example.noteshare.feature.profile.data.UserApi
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
 import javax.inject.Inject
 
 @HiltViewModel
@@ -22,7 +23,6 @@ class MainViewModel @Inject constructor(
     private val tokenInterceptor: TokenInterceptor,
     private val userApi: UserApi,
     private val unauthorizedEventBus: UnauthorizedEventBus,
-    private val webSocketClient: NotificationWebSocketClient,
     private val notificationRepository: NotificationRepository
 ) : ViewModel() {
 
@@ -50,9 +50,9 @@ class MainViewModel @Inject constructor(
                     tokenManager.clearToken()
                     tokenInterceptor.invalidateCache()
                 } else {
-                    // 登录成功后连接 WebSocket 并获取未读数
-                    connectWebSocket()
+                    // 登录成功后获取未读数并开始轮询
                     fetchUnreadCount()
+                    startPollingUnreadCount()
                 }
             }
         }
@@ -62,18 +62,10 @@ class MainViewModel @Inject constructor(
         return try {
             val response = userApi.getMyProfile()
             response.code == ErrorCode.SUCCESS && response.data != null
+        } catch (e: HttpException) {
+            false
         } catch (_: Exception) {
-            true
-        }
-    }
-
-    private fun connectWebSocket() {
-        webSocketClient.connect()
-        viewModelScope.launch {
-            webSocketClient.notifications.collect {
-                // 收到推送时未读数 +1
-                _unreadCount.value = _unreadCount.value + 1
-            }
+            false
         }
     }
 
@@ -86,14 +78,30 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    /** 每 5 秒轮询未读数 */
+    private fun startPollingUnreadCount() {
+        viewModelScope.launch {
+            while (true) {
+                delay(5_000)
+                fetchUnreadCount()
+            }
+        }
+    }
+
     /** 进入通知页后调用，清零未读数 */
     fun clearUnreadCount() {
         _unreadCount.value = 0
     }
 
+    /** 登录成功后调用，刷新登录状态并获取未读数 */
+    fun onLoginSuccess() {
+        _loginState.value = true
+        fetchUnreadCount()
+        startPollingUnreadCount()
+    }
+
     fun logout() {
         viewModelScope.launch {
-            webSocketClient.disconnect()
             tokenManager.clearToken()
             tokenInterceptor.invalidateCache()
             _loginState.value = false

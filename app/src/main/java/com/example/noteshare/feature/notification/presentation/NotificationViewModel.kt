@@ -43,7 +43,7 @@ class NotificationViewModel @Inject constructor(
                         notifications = pageData.items,
                         isLoading = false,
                         currentPage = 1,
-                        hasMore = pageData.items.size >= 20
+                        hasMore = pageData.hasMore
                     )
                 }
                 .onFailure { e ->
@@ -56,7 +56,7 @@ class NotificationViewModel @Inject constructor(
     }
 
     fun loadMore() {
-        if (_uiState.value.isLoadingMore || !_uiState.value.hasMore) return
+        if (_uiState.value.isLoading || _uiState.value.isLoadingMore || !_uiState.value.hasMore) return
         val nextPage = _uiState.value.currentPage + 1
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoadingMore = true)
@@ -66,7 +66,7 @@ class NotificationViewModel @Inject constructor(
                         notifications = _uiState.value.notifications + pageData.items,
                         isLoadingMore = false,
                         currentPage = nextPage,
-                        hasMore = pageData.items.size >= 20
+                        hasMore = pageData.hasMore
                     )
                 }
                 .onFailure {

@@ -14,7 +14,6 @@ import javax.inject.Singleton
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
-@Singleton
 class TokenManager @Inject constructor(@ApplicationContext private val context: Context) {
     private val TOKEN_KEY = stringPreferencesKey("jwt_token")
 

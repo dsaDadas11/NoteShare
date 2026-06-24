@@ -193,7 +193,7 @@ fun PublishScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    items(uiState.selectedImages) { uri ->
+                    items(uiState.selectedImages, key = { it.toString() }) { uri ->
                         Box(modifier = Modifier.size(100.dp)) {
                             AsyncImage(
                                 model = uri,

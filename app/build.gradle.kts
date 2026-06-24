@@ -12,12 +12,12 @@ android {
     compileSdk = 35
     val noteshareBaseUrl = providers
         .gradleProperty("noteshareBaseUrl")
-        .orElse("http://10.0.2.2:8200/")
+        .orElse("http://127.0.0.1:8200/")
         .get()
 
     defaultConfig {
         applicationId = "com.example.noteshare"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
@@ -57,7 +57,7 @@ android {
 
 val ensureNoteshareServer by tasks.registering {
     group = "noteshare"
-    description = "Start the Spring Boot backend on host tcp:8081 if it is not already running."
+    description = "Start the Spring Boot backend on host tcp:8200 if it is not already running."
     val serverDir = rootProject.layout.projectDirectory.dir("noteshare-server").asFile
     val logDir = rootProject.layout.buildDirectory.dir("noteshare-server").get().asFile
 
@@ -115,13 +115,59 @@ val ensureNoteshareServer by tasks.registering {
     }
 }
 
-val adbReverseDebug by tasks.registering(Exec::class) {
+val adbReverseDebug by tasks.registering {
     group = "noteshare"
-    description = "Forward Android device tcp:8200 to host tcp:8200 before debug install."
-    val adbExecutable = android.sdkDirectory.resolve("platform-tools/adb.exe")
-    commandLine(adbExecutable.absolutePath, "reverse", "tcp:8200", "tcp:8200")
-    isIgnoreExitValue = true
+    description = "Forward tcp:8200 to the host for every connected debug device."
     dependsOn(ensureNoteshareServer)
+    outputs.upToDateWhen { false }
+
+    doLast {
+        val adbName = if (System.getProperty("os.name").startsWith("Windows")) "adb.exe" else "adb"
+        val adbExecutable = android.sdkDirectory.resolve("platform-tools/$adbName")
+        if (!adbExecutable.exists()) {
+            println("WARNING: adb not found at $adbExecutable")
+            return@doLast
+        }
+
+        fun runAdb(vararg args: String): Pair<Int, String> {
+            val process = ProcessBuilder(adbExecutable.absolutePath, *args)
+                .redirectErrorStream(true)
+                .start()
+            val output = process.inputStream.bufferedReader().readText()
+            val exitCode = process.waitFor()
+            return exitCode to output
+        }
+
+        val (devicesExitCode, devicesOutput) = runAdb("devices")
+        if (devicesExitCode != 0) {
+            println("WARNING: Unable to list Android devices:\n$devicesOutput")
+            return@doLast
+        }
+
+        val devices = devicesOutput
+            .lineSequence()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() && !it.startsWith("List of devices") }
+            .mapNotNull { line ->
+                val parts = line.split(Regex("\\s+"))
+                if (parts.size >= 2 && parts[1] == "device") parts[0] else null
+            }
+            .toList()
+
+        if (devices.isEmpty()) {
+            println("No online Android devices found; skipping adb reverse.")
+            return@doLast
+        }
+
+        devices.forEach { serial ->
+            val (reverseExitCode, reverseOutput) = runAdb("-s", serial, "reverse", "tcp:8200", "tcp:8200")
+            if (reverseExitCode == 0) {
+                println("Configured adb reverse for $serial: tcp:8200 -> tcp:8200")
+            } else {
+                println("WARNING: Failed to configure adb reverse for $serial:\n$reverseOutput")
+            }
+        }
+    }
 }
 
 tasks.matching { it.name == "preDebugBuild" || it.name == "installDebug" }.configureEach {
@@ -138,6 +184,7 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.material.icons.extended)
+    implementation(libs.google.material)
 
     // Navigation Compose
     implementation(libs.androidx.navigation.compose)
@@ -164,6 +211,21 @@ dependencies {
 
     // DataStore
     implementation(libs.androidx.datastore.preferences)
+
+    // Testing - Unit Tests
+    testImplementation(libs.junit)
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.0")
+    testImplementation("io.mockk:mockk:1.13.9")
+    testImplementation("app.cash.turbine:turbine:1.0.0")
+    testImplementation("androidx.arch.core:core-testing:2.2.0")
+    testImplementation("org.robolectric:robolectric:4.12.2")
+    testImplementation("androidx.test:core:1.6.1")
+
+    // Testing - Instrumented Tests
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.ui.test.junit4)
 
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)

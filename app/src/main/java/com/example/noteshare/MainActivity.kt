@@ -21,9 +21,6 @@ import dagger.hilt.android.AndroidEntryPoint
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.noteshare.feature.auth.presentation.LoginScreen
@@ -81,23 +78,6 @@ fun NoteShareAppScreen(
     val navController = rememberNavController()
     val isLoggedIn by mainViewModel.loginState.collectAsState()
 
-    // 监听 401 事件，自动跳转登录页
-    val unauthorizedEventBus = remember {
-        // 通过 Hilt 获取 - 在 Composable 中通过 Activity 获取
-        // 这里用 mainViewModel 间接处理
-        null
-    }
-    LaunchedEffect(Unit) {
-        mainViewModel.unauthorizedEvents.collect {
-            navController.navigate("login") {
-                popUpTo(navController.graph.startDestinationId) {
-                    inclusive = true
-                }
-                launchSingleTop = true
-            }
-        }
-    }
-
     if (isLoggedIn == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             androidx.compose.material3.CircularProgressIndicator()
@@ -106,6 +86,21 @@ fun NoteShareAppScreen(
     }
 
     val startDestination = if (isLoggedIn == true) "feed" else "login"
+
+    // 监听 401 事件，自动跳转登录页。必须等 NavHost 创建导航图后再访问 navController.graph。
+    LaunchedEffect(Unit) {
+        mainViewModel.unauthorizedEvents.collect {
+            if (navController.currentDestination == null) {
+                return@collect
+            }
+            navController.navigate("login") {
+                popUpTo(navController.graph.startDestinationId) {
+                    inclusive = true
+                }
+                launchSingleTop = true
+            }
+        }
+    }
 
     Scaffold(
         bottomBar = {
@@ -152,6 +147,7 @@ fun NoteShareAppScreen(
             composable("login") {
                 LoginScreen(
                     onLoginSuccess = {
+                        mainViewModel.onLoginSuccess()
                         navController.navigate("feed") {
                             popUpTo("login") { inclusive = true }
                         }

@@ -7,10 +7,8 @@ import com.example.noteshare.dto.request.CreateCommentRequest;
 import com.example.noteshare.dto.response.CommentResponse;
 import com.example.noteshare.dto.response.UserBrief;
 import com.example.noteshare.entity.Comment;
-import com.example.noteshare.entity.Notification;
 import com.example.noteshare.entity.User;
 import com.example.noteshare.repository.*;
-import com.example.noteshare.websocket.NotificationWebSocketHandler;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -28,20 +26,17 @@ public class CommentService {
     private final UserRepository userRepository;
     private final CommentLikeRelRepository commentLikeRelRepository;
     private final NotificationService notificationService;
-    private final NotificationWebSocketHandler webSocketHandler;
 
     public CommentService(CommentRepository commentRepository,
                           NoteRepository noteRepository,
                           UserRepository userRepository,
                           CommentLikeRelRepository commentLikeRelRepository,
-                          NotificationService notificationService,
-                          NotificationWebSocketHandler webSocketHandler) {
+                          NotificationService notificationService) {
         this.commentRepository = commentRepository;
         this.noteRepository = noteRepository;
         this.userRepository = userRepository;
         this.commentLikeRelRepository = commentLikeRelRepository;
         this.notificationService = notificationService;
-        this.webSocketHandler = webSocketHandler;
     }
 
     /**
@@ -77,12 +72,8 @@ public class CommentService {
             commentRepository.incrementReplyCount(parentId);
         }
 
-        // 触发评论通知
-        Notification notification = notificationService.createCommentNotification(
-                userId, noteId, req.getContent());
-        if (notification != null) {
-            webSocketHandler.sendNotification(notification.getReceiverId(), buildNotificationPush(notification));
-        }
+        // 触发评论通知（仅保存到数据库）
+        notificationService.createCommentNotification(userId, noteId, req.getContent());
 
         return buildCommentResponse(comment, userId);
     }
@@ -303,16 +294,5 @@ public class CommentService {
                 .map(u -> new UserBrief(u.getId(), u.getUsername(), u.getNickname(), u.getAvatarUrl()))
                 .orElse(new UserBrief(comment.getUserId(), "unknown", "已注销用户", null)));
         return resp;
-    }
-
-    private Object buildNotificationPush(Notification notification) {
-        return new Object() {
-            public final Long getNotificationId() { return notification.getId(); }
-            public final String getType() { return notification.getType(); }
-            public final Long getSenderId() { return notification.getSenderId(); }
-            public final Long getNoteId() { return notification.getNoteId(); }
-            public final String getCommentContent() { return notification.getCommentContent(); }
-            public final String getCreatedAt() { return notification.getCreatedAt().toString(); }
-        };
     }
 }

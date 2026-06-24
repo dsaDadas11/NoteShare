@@ -33,8 +33,6 @@ public class SecurityConfig {
             .sessionManagement(sm ->
                 sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // WebSocket 端点放行（认证在 Handler 中通过 token 参数完成）
-                .requestMatchers("/ws/**").permitAll()
                 // 公开接口放行
                 .requestMatchers(HttpMethod.POST, "/api/auth/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/notes/**").permitAll()

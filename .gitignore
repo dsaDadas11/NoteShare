@@ -41,3 +41,7 @@ application-local.yml
 
 # === Antigravity CLI ===
 .antigravitycli
+
+# === Superpowers / brainstorm ===
+.superpowers/
+docs/superpowers/

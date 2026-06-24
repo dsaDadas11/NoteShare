@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.noteshare.core.network.resolveMediaUrl
+import com.example.noteshare.core.common.formatDateTime
 import com.example.noteshare.feature.notification.domain.model.NotificationResponse
 import com.example.noteshare.shared.ui.AvatarImage
 
@@ -169,7 +170,7 @@ fun NotificationItem(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = formatTime(notification.createdAt),
+                    text = formatDateTime(notification.createdAt),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 12.sp
@@ -191,23 +192,5 @@ private fun buildNotificationText(notification: NotificationResponse): String {
             "$sender 评论了你的笔记《$noteTitle》：\"$content\""
         }
         else -> "$sender 与你的笔记互动了"
-    }
-}
-
-private fun formatTime(createdAt: String): String {
-    // Simple relative time formatting
-    return try {
-        val dateTime = java.time.LocalDateTime.parse(createdAt)
-        val now = java.time.LocalDateTime.now()
-        val duration = java.time.Duration.between(dateTime, now)
-        when {
-            duration.toMinutes() < 1 -> "刚刚"
-            duration.toMinutes() < 60 -> "${duration.toMinutes()}分钟前"
-            duration.toHours() < 24 -> "${duration.toHours()}小时前"
-            duration.toDays() < 30 -> "${duration.toDays()}天前"
-            else -> "${dateTime.monthValue}月${dateTime.dayOfMonth}日"
-        }
-    } catch (e: Exception) {
-        createdAt
     }
 }

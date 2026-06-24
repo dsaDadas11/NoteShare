@@ -65,7 +65,7 @@ class FeedListViewModel @Inject constructor(
 
     fun loadMore() {
         val currentState = _uiState.value
-        if (currentState.isLoadingMore || !currentState.hasMore || currentState.loadMoreFailed) return
+        if (currentState.isLoading || currentState.isLoadingMore || !currentState.hasMore || currentState.loadMoreFailed) return
 
         _uiState.update { it.copy(isLoadingMore = true, error = null) }
         val nextPage = currentState.currentPage + 1
