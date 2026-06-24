@@ -55,7 +55,8 @@
 2. 配置网络：
    - 默认 `BASE_URL` 为 `http://127.0.0.1:8200/`（在 `app/build.gradle.kts` 中定义）。
    - 如需修改，在项目根目录 `gradle.properties` 中添加：`noteshareBaseUrl=http://你的IP:8200/`
-   - 确保手机/模拟器与后端服务处于同一局域网内。注意：不要使用 `localhost` 或 `127.0.0.1`，模拟器可以使用 `10.0.2.2`。
+   - 确保手机/模拟器与后端服务处于同一局域网内。
+   - 项目已配置 `network_security_config.xml`，允许对 `127.0.0.1` 和 `localhost` 的明文 HTTP 通信，因此模拟器可直接使用默认地址连接后端。
 3. 运行应用：在 Android Studio 中点击 Run，部署到手机或模拟器上。
 
 ## 注意事项
