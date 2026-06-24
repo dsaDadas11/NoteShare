@@ -1,6 +1,7 @@
 package com.example.noteshare.feature.notification.presentation
 
 import com.example.noteshare.core.common.ErrorCode
+import com.example.noteshare.core.common.Result
 import com.example.noteshare.core.network.PageData
 import com.example.noteshare.feature.notification.data.NotificationRepository
 import com.example.noteshare.feature.notification.domain.model.NotificationResponse
@@ -93,8 +94,8 @@ class NotificationViewModelTest {
         val notifications = listOf(createNotification(id = 1), createNotification(id = 2))
         coEvery {
             repository.getNotifications(page = 1)
-        } returns Result.success(createPageData(items = notifications, hasMore = false))
-        coEvery { repository.markAllAsRead() } returns Result.success(Unit)
+        } returns Result.Success(createPageData(items = notifications, hasMore = false))
+        coEvery { repository.markAllAsRead() } returns Result.Success(Unit)
 
         // When: 创建 ViewModel（触发 init）
         viewModel = NotificationViewModel(repository)
@@ -118,8 +119,8 @@ class NotificationViewModelTest {
         // Given: repository 返回失败
         coEvery {
             repository.getNotifications(page = 1)
-        } returns Result.failure(Exception("网络连接失败"))
-        coEvery { repository.markAllAsRead() } returns Result.success(Unit)
+        } returns Result.Error(ErrorCode.NETWORK_ERROR, "网络连接失败")
+        coEvery { repository.markAllAsRead() } returns Result.Success(Unit)
 
         // When: 创建 ViewModel
         viewModel = NotificationViewModel(repository)
@@ -145,11 +146,11 @@ class NotificationViewModelTest {
         coEvery {
             repository.getNotifications(page = 1)
         } returnsMany listOf(
-            Result.success(createPageData(items = oldNotifications, hasMore = false)),
+            Result.Success(createPageData(items = oldNotifications, hasMore = false)),
             // 第二次调用（刷新）
-            Result.success(createPageData(items = listOf(createNotification(id = 3)), hasMore = false))
+            Result.Success(createPageData(items = listOf(createNotification(id = 3)), hasMore = false))
         )
-        coEvery { repository.markAllAsRead() } returns Result.success(Unit)
+        coEvery { repository.markAllAsRead() } returns Result.Success(Unit)
 
         // When: 创建 ViewModel 并触发刷新
         viewModel = NotificationViewModel(repository)
@@ -175,11 +176,11 @@ class NotificationViewModelTest {
         coEvery {
             repository.getNotifications(page = 1)
         } returnsMany listOf(
-            Result.success(createPageData(items = oldNotifications, hasMore = false)),
+            Result.Success(createPageData(items = oldNotifications, hasMore = false)),
             // 第二次调用（刷新）失败
-            Result.failure(Exception("服务器异常"))
+            Result.Error(ErrorCode.SERVER_ERROR, "服务器异常")
         )
-        coEvery { repository.markAllAsRead() } returns Result.success(Unit)
+        coEvery { repository.markAllAsRead() } returns Result.Success(Unit)
 
         // When: 创建 ViewModel 并触发刷新
         viewModel = NotificationViewModel(repository)
@@ -205,9 +206,9 @@ class NotificationViewModelTest {
             repository.getNotifications(page = 1)
         } coAnswers {
             kotlinx.coroutines.delay(10_000)
-            Result.success(createPageData(items = listOf(createNotification()), hasMore = false))
+            Result.Success(createPageData(items = listOf(createNotification()), hasMore = false))
         }
-        coEvery { repository.markAllAsRead() } returns Result.success(Unit)
+        coEvery { repository.markAllAsRead() } returns Result.Success(Unit)
 
         // When: 创建 ViewModel（init 调用 loadNotifications）
         viewModel = NotificationViewModel(repository)
@@ -231,18 +232,18 @@ class NotificationViewModelTest {
         // Given: 初始加载有下一页，加载更多也有下一页
         coEvery {
             repository.getNotifications(page = 1)
-        } returns Result.success(createPageData(
+        } returns Result.Success(createPageData(
             items = listOf(createNotification(id = 1)),
             hasMore = true
         ))
         coEvery {
             repository.getNotifications(page = 2)
-        } returns Result.success(createPageData(
+        } returns Result.Success(createPageData(
             items = listOf(createNotification(id = 10)),
             page = 2,
             hasMore = false
         ))
-        coEvery { repository.markAllAsRead() } returns Result.success(Unit)
+        coEvery { repository.markAllAsRead() } returns Result.Success(Unit)
 
         // When: 初始化并加载更多
         viewModel = NotificationViewModel(repository)
@@ -268,14 +269,14 @@ class NotificationViewModelTest {
         // Given: 初始加载成功（hasMore = true）
         coEvery {
             repository.getNotifications(page = 1)
-        } returns Result.success(createPageData(
+        } returns Result.Success(createPageData(
             items = listOf(createNotification(id = 1)),
             hasMore = true
         ))
         coEvery {
             repository.getNotifications(page = 2)
-        } returns Result.failure(Exception("加载失败"))
-        coEvery { repository.markAllAsRead() } returns Result.success(Unit)
+        } returns Result.Error(ErrorCode.NETWORK_ERROR, "加载失败")
+        coEvery { repository.markAllAsRead() } returns Result.Success(Unit)
 
         // When: 初始化并加载更多
         viewModel = NotificationViewModel(repository)
@@ -298,11 +299,11 @@ class NotificationViewModelTest {
         // Given: 初始加载 hasMore = false
         coEvery {
             repository.getNotifications(page = 1)
-        } returns Result.success(createPageData(
+        } returns Result.Success(createPageData(
             items = listOf(createNotification(id = 1)),
             hasMore = false
         ))
-        coEvery { repository.markAllAsRead() } returns Result.success(Unit)
+        coEvery { repository.markAllAsRead() } returns Result.Success(Unit)
 
         // When: 初始化后调用 loadMore
         viewModel = NotificationViewModel(repository)
@@ -325,8 +326,8 @@ class NotificationViewModelTest {
         // Given: 服务端返回空列表
         coEvery {
             repository.getNotifications(page = 1)
-        } returns Result.success(createPageData(items = emptyList(), hasMore = false))
-        coEvery { repository.markAllAsRead() } returns Result.success(Unit)
+        } returns Result.Success(createPageData(items = emptyList(), hasMore = false))
+        coEvery { repository.markAllAsRead() } returns Result.Success(Unit)
 
         // When: 创建 ViewModel
         viewModel = NotificationViewModel(repository)
@@ -350,8 +351,8 @@ class NotificationViewModelTest {
         // Given
         coEvery {
             repository.getNotifications(page = 1)
-        } returns Result.success(createPageData(hasMore = false))
-        coEvery { repository.markAllAsRead() } returns Result.success(Unit)
+        } returns Result.Success(createPageData(hasMore = false))
+        coEvery { repository.markAllAsRead() } returns Result.Success(Unit)
 
         // When
         viewModel = NotificationViewModel(repository)
@@ -370,8 +371,8 @@ class NotificationViewModelTest {
         // Given: 标记已读失败
         coEvery {
             repository.getNotifications(page = 1)
-        } returns Result.success(createPageData(items = listOf(createNotification()), hasMore = false))
-        coEvery { repository.markAllAsRead() } returns Result.failure(Exception("服务器错误"))
+        } returns Result.Success(createPageData(items = listOf(createNotification()), hasMore = false))
+        coEvery { repository.markAllAsRead() } returns Result.Error(ErrorCode.SERVER_ERROR, "服务器错误")
 
         // When: 创建 ViewModel
         viewModel = NotificationViewModel(repository)
@@ -394,11 +395,11 @@ class NotificationViewModelTest {
         // Given
         coEvery {
             repository.getNotifications(page = 1)
-        } returns Result.success(createPageData(
+        } returns Result.Success(createPageData(
             items = listOf(createNotification(type = "LIKE")),
             hasMore = false
         ))
-        coEvery { repository.markAllAsRead() } returns Result.success(Unit)
+        coEvery { repository.markAllAsRead() } returns Result.Success(Unit)
 
         // When
         viewModel = NotificationViewModel(repository)
@@ -420,11 +421,11 @@ class NotificationViewModelTest {
         )
         coEvery {
             repository.getNotifications(page = 1)
-        } returns Result.success(createPageData(
+        } returns Result.Success(createPageData(
             items = listOf(commentNotification),
             hasMore = false
         ))
-        coEvery { repository.markAllAsRead() } returns Result.success(Unit)
+        coEvery { repository.markAllAsRead() } returns Result.Success(Unit)
 
         // When
         viewModel = NotificationViewModel(repository)
@@ -444,11 +445,11 @@ class NotificationViewModelTest {
         // Given
         coEvery {
             repository.getNotifications(page = 1)
-        } returns Result.success(createPageData(
+        } returns Result.Success(createPageData(
             items = listOf(createNotification(type = "FOLLOW")),
             hasMore = false
         ))
-        coEvery { repository.markAllAsRead() } returns Result.success(Unit)
+        coEvery { repository.markAllAsRead() } returns Result.Success(Unit)
 
         // When
         viewModel = NotificationViewModel(repository)
@@ -469,8 +470,8 @@ class NotificationViewModelTest {
         // Given: 先产生一个错误
         coEvery {
             repository.getNotifications(page = 1)
-        } returns Result.failure(Exception("测试错误"))
-        coEvery { repository.markAllAsRead() } returns Result.success(Unit)
+        } returns Result.Error(ErrorCode.NETWORK_ERROR, "测试错误")
+        coEvery { repository.markAllAsRead() } returns Result.Success(Unit)
 
         viewModel = NotificationViewModel(repository)
         advanceUntilIdle()
@@ -494,25 +495,25 @@ class NotificationViewModelTest {
         // Given: 3 页数据
         coEvery {
             repository.getNotifications(page = 1)
-        } returns Result.success(createPageData(
+        } returns Result.Success(createPageData(
             items = listOf(createNotification(id = 1)),
             hasMore = true
         ))
         coEvery {
             repository.getNotifications(page = 2)
-        } returns Result.success(createPageData(
+        } returns Result.Success(createPageData(
             items = listOf(createNotification(id = 2)),
             page = 2,
             hasMore = true
         ))
         coEvery {
             repository.getNotifications(page = 3)
-        } returns Result.success(createPageData(
+        } returns Result.Success(createPageData(
             items = listOf(createNotification(id = 3)),
             page = 3,
             hasMore = false
         ))
-        coEvery { repository.markAllAsRead() } returns Result.success(Unit)
+        coEvery { repository.markAllAsRead() } returns Result.Success(Unit)
 
         // When: 初始化并连续加载更多
         viewModel = NotificationViewModel(repository)
@@ -543,7 +544,7 @@ class NotificationViewModelTest {
         // Given
         coEvery {
             repository.getNotifications(page = 1)
-        } returns Result.success(createPageData(
+        } returns Result.Success(createPageData(
             items = listOf(createNotification()),
             hasMore = true
         ))
@@ -551,9 +552,9 @@ class NotificationViewModelTest {
             repository.getNotifications(page = 2)
         } coAnswers {
             kotlinx.coroutines.delay(10_000)
-            Result.success(createPageData(items = listOf(createNotification(id = 2)), page = 2, hasMore = false))
+            Result.Success(createPageData(items = listOf(createNotification(id = 2)), page = 2, hasMore = false))
         }
-        coEvery { repository.markAllAsRead() } returns Result.success(Unit)
+        coEvery { repository.markAllAsRead() } returns Result.Success(Unit)
 
         // When: 初始化后调用 loadMore
         viewModel = NotificationViewModel(repository)
@@ -579,8 +580,8 @@ class NotificationViewModelTest {
         // Given
         coEvery {
             repository.getNotifications(page = 1)
-        } returns Result.success(createPageData(hasMore = false))
-        coEvery { repository.markAllAsRead() } returns Result.success(Unit)
+        } returns Result.Success(createPageData(hasMore = false))
+        coEvery { repository.markAllAsRead() } returns Result.Success(Unit)
 
         // When: 创建 ViewModel（init 已执行）
         viewModel = NotificationViewModel(repository)

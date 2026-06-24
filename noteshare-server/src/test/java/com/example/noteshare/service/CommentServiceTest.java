@@ -38,6 +38,9 @@ class CommentServiceTest {
     @Mock
     private com.example.noteshare.repository.CommentLikeRelRepository commentLikeRelRepository;
 
+    @Mock
+    private NotificationService notificationService;
+
     @InjectMocks
     private CommentService commentService;
 

@@ -1,6 +1,7 @@
 package com.example.noteshare.feature.notification.data
 
 import com.example.noteshare.core.common.ErrorCode
+import com.example.noteshare.core.common.Result
 import com.example.noteshare.core.network.ApiResponse
 import com.example.noteshare.core.network.PageData
 import com.example.noteshare.feature.notification.domain.model.NotificationResponse
@@ -63,7 +64,7 @@ class NotificationRepositoryTest {
 
     /**
      * 测试：获取通知列表成功
-     * 期望：Result.success 包含 PageData
+     * 期望：Result.Success 包含 PageData
      */
     @Test
     fun getNotifications_success_returnsPageData() = runTest {
@@ -78,8 +79,8 @@ class NotificationRepositoryTest {
         val result = repository.getNotifications(page = 1, size = 20)
 
         // Then
-        assertTrue(result.isSuccess)
-        val data = result.getOrNull()!!
+        assertTrue(result is Result.Success)
+        val data = (result as Result.Success).data
         assertEquals(2, data.items.size)
         assertEquals(1L, data.items[0].id)
         assertEquals(2L, data.items[1].id)
@@ -88,7 +89,7 @@ class NotificationRepositoryTest {
 
     /**
      * 测试：获取通知列表时 API 返回非成功错误码
-     * 期望：Result.failure 包含错误信息
+     * 期望：Result.Error 包含错误信息
      */
     @Test
     fun getNotifications_apiError_returnsFailure() = runTest {
@@ -101,16 +102,16 @@ class NotificationRepositoryTest {
         val result = repository.getNotifications()
 
         // Then
-        assertTrue(result.isFailure)
-        assertEquals("服务器内部错误", result.exceptionOrNull()?.message)
+        assertTrue(result is Result.Error)
+        assertEquals("服务器内部错误", (result as Result.Error).message)
     }
 
     /**
      * 测试：获取通知列表时 API 返回错误消息为空的情况
-     * 期望：异常消息为空字符串（因为源码使用 response.message ?: default，空字符串不是null）
+     * 期望：错误消息为默认值
      */
     @Test
-    fun getNotifications_apiError_emptyMessage_returnsEmpty() = runTest {
+    fun getNotifications_apiError_emptyMessage_returnsDefault() = runTest {
         // Given: API 返回错误但 message 为空字符串
         coEvery {
             notificationApi.getNotifications(page = 1, size = 20)
@@ -119,14 +120,14 @@ class NotificationRepositoryTest {
         // When
         val result = repository.getNotifications()
 
-        // Then
-        assertTrue(result.isFailure)
-        assertEquals("", result.exceptionOrNull()?.message)
+        // Then: message 为空字符串（非null），返回源码中 message ?: default
+        assertTrue(result is Result.Error)
+        assertEquals("", (result as Result.Error).message)
     }
 
     /**
      * 测试：获取通知列表时 API 抛出网络异常
-     * 期望：Result.failure 包含异常
+     * 期望：Result.Error 包含网络错误信息
      */
     @Test
     fun getNotifications_networkException_returnsFailure() = runTest {
@@ -139,13 +140,15 @@ class NotificationRepositoryTest {
         val result = repository.getNotifications()
 
         // Then
-        assertTrue(result.isFailure)
-        assertEquals("网络超时", result.exceptionOrNull()?.message)
+        assertTrue(result is Result.Error)
+        val error = result as Result.Error
+        assertEquals(ErrorCode.NETWORK_ERROR, error.code)
+        assertTrue(error.message.contains("网络超时"))
     }
 
     /**
      * 测试：获取通知列表时 data 为 null 的情况
-     * 期望：Result.failure，异常消息为 API 的 message 字段
+     * 期望：Result.Error，消息为 API 的 message 字段
      */
     @Test
     fun getNotifications_dataNull_returnsFailure() = runTest {
@@ -157,16 +160,16 @@ class NotificationRepositoryTest {
         // When
         val result = repository.getNotifications()
 
-        // Then: code=SUCCESS 但 data=null，进入 else 分支，异常消息为 "ok"
-        assertTrue(result.isFailure)
-        assertEquals("ok", result.exceptionOrNull()?.message)
+        // Then: code=SUCCESS 但 data=null，进入 else 分支，消息为 "ok"
+        assertTrue(result is Result.Error)
+        assertEquals("ok", (result as Result.Error).message)
     }
 
     // ==================== getUnreadCount 测试 ====================
 
     /**
      * 测试：获取未读数成功
-     * 期望：Result.success 包含 count
+     * 期望：Result.Success 包含 count
      */
     @Test
     fun getUnreadCount_success_returnsCount() = runTest {
@@ -179,13 +182,13 @@ class NotificationRepositoryTest {
         val result = repository.getUnreadCount()
 
         // Then
-        assertTrue(result.isSuccess)
-        assertEquals(5, result.getOrNull())
+        assertTrue(result is Result.Success)
+        assertEquals(5, (result as Result.Success).data)
     }
 
     /**
      * 测试：获取未读数成功但 count 为 0
-     * 期望：Result.success(0)
+     * 期望：Result.Success(0)
      */
     @Test
     fun getUnreadCount_success_zeroCount() = runTest {
@@ -198,13 +201,13 @@ class NotificationRepositoryTest {
         val result = repository.getUnreadCount()
 
         // Then
-        assertTrue(result.isSuccess)
-        assertEquals(0, result.getOrNull())
+        assertTrue(result is Result.Success)
+        assertEquals(0, (result as Result.Success).data)
     }
 
     /**
      * 测试：获取未读数时 API 返回业务错误
-     * 期望：Result.failure
+     * 期望：Result.Error
      */
     @Test
     fun getUnreadCount_apiError_returnsFailure() = runTest {
@@ -217,13 +220,13 @@ class NotificationRepositoryTest {
         val result = repository.getUnreadCount()
 
         // Then
-        assertTrue(result.isFailure)
-        assertEquals("token无效", result.exceptionOrNull()?.message)
+        assertTrue(result is Result.Error)
+        assertEquals("token无效", (result as Result.Error).message)
     }
 
     /**
      * 测试：获取未读数时 API 抛出异常
-     * 期望：Result.failure
+     * 期望：Result.Error
      */
     @Test
     fun getUnreadCount_networkException_returnsFailure() = runTest {
@@ -236,13 +239,14 @@ class NotificationRepositoryTest {
         val result = repository.getUnreadCount()
 
         // Then
-        assertTrue(result.isFailure)
-        assertEquals("连接超时", result.exceptionOrNull()?.message)
+        assertTrue(result is Result.Error)
+        val error = result as Result.Error
+        assertTrue(error.message.contains("连接超时"))
     }
 
     /**
      * 测试：获取未读数时 data 为 null
-     * 期望：Result.failure，异常消息为 API message
+     * 期望：Result.Error，消息为 API message
      */
     @Test
     fun getUnreadCount_dataNull_returnsFailure() = runTest {
@@ -255,15 +259,15 @@ class NotificationRepositoryTest {
         val result = repository.getUnreadCount()
 
         // Then: code=SUCCESS 但 data=null，进入 else 分支
-        assertTrue(result.isFailure)
-        assertEquals("ok", result.exceptionOrNull()?.message)
+        assertTrue(result is Result.Error)
+        assertEquals("ok", (result as Result.Error).message)
     }
 
     // ==================== markAllAsRead 测试 ====================
 
     /**
      * 测试：标记所有已读成功
-     * 期望：Result.success
+     * 期望：Result.Success
      */
     @Test
     fun markAllAsRead_success_returnsSuccess() = runTest {
@@ -276,13 +280,13 @@ class NotificationRepositoryTest {
         val result = repository.markAllAsRead()
 
         // Then
-        assertTrue(result.isSuccess)
+        assertTrue(result is Result.Success)
         coVerify(exactly = 1) { notificationApi.markAllAsRead() }
     }
 
     /**
      * 测试：标记所有已读时 API 返回业务错误
-     * 期望：Result.failure
+     * 期望：Result.Error
      */
     @Test
     fun markAllAsRead_apiError_returnsFailure() = runTest {
@@ -295,13 +299,13 @@ class NotificationRepositoryTest {
         val result = repository.markAllAsRead()
 
         // Then
-        assertTrue(result.isFailure)
-        assertEquals("服务器异常", result.exceptionOrNull()?.message)
+        assertTrue(result is Result.Error)
+        assertEquals("服务器异常", (result as Result.Error).message)
     }
 
     /**
      * 测试：标记所有已读时 API 抛出异常
-     * 期望：Result.failure
+     * 期望：Result.Error
      */
     @Test
     fun markAllAsRead_networkException_returnsFailure() = runTest {
@@ -314,13 +318,14 @@ class NotificationRepositoryTest {
         val result = repository.markAllAsRead()
 
         // Then
-        assertTrue(result.isFailure)
-        assertEquals("网络断开", result.exceptionOrNull()?.message)
+        assertTrue(result is Result.Error)
+        val error = result as Result.Error
+        assertTrue(error.message.contains("网络断开"))
     }
 
     /**
      * 测试：标记已读时 API 返回错误消息为空
-     * 期望：异常消息为空字符串
+     * 期望：错误消息为空字符串
      */
     @Test
     fun markAllAsRead_apiError_emptyMessage_returnsEmpty() = runTest {
@@ -332,9 +337,9 @@ class NotificationRepositoryTest {
         // When
         val result = repository.markAllAsRead()
 
-        // Then: message 为空字符串，不是 null，所以异常消息为 ""
-        assertTrue(result.isFailure)
-        assertEquals("", result.exceptionOrNull()?.message)
+        // Then: message 为空字符串，不是 null，所以错误消息为 ""
+        assertTrue(result is Result.Error)
+        assertEquals("", (result as Result.Error).message)
     }
 
     // ==================== 分页参数测试 ====================

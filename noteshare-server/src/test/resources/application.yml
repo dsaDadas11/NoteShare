@@ -25,3 +25,4 @@ file:
     - image/gif
     - image/webp
   max-size: 5242880
+  video-max-size: 52428800
