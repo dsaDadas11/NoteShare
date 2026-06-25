@@ -16,10 +16,16 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.test.runTest
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.Protocol
+import okhttp3.Request
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import retrofit2.HttpException
+import retrofit2.Response
 
 class AuthRepositoryTest {
 
@@ -292,6 +298,19 @@ class AuthRepositoryTest {
     }
 
     @Test
+    fun register_http400ValidationError_returnsParsedMessage() = runTest {
+        coEvery { authApi.register(any()) } throws httpException(
+            statusCode = 400,
+            body = """{"code":40000,"message":"username: 用户名只能包含字母、数字、下划线","data":null}"""
+        )
+        val result = repository.register(RegisterRequest("user@name", "password123"))
+        assertTrue(result is Result.Error)
+        val error = result as Result.Error
+        assertEquals(ErrorCode.PARAM_INVALID, error.code)
+        assertEquals("username: 用户名只能包含字母、数字、下划线", error.message)
+    }
+
+    @Test
     fun register_serverError_returnsServerError() = runTest {
         // 服务器内部错误
         coEvery { authApi.register(any()) } returns ApiResponse(
@@ -339,5 +358,19 @@ class AuthRepositoryTest {
         coEvery { authApi.login(any()) } throws java.io.IOException("Connection refused")
         repository.login(LoginRequest("testuser", "password123"))
         verify(exactly = 0) { tokenInterceptor.updateCachedToken(any()) }
+    }
+
+    private fun httpException(statusCode: Int, body: String): HttpException {
+        val rawResponse = okhttp3.Response.Builder()
+            .code(statusCode)
+            .message("HTTP $statusCode")
+            .protocol(Protocol.HTTP_1_1)
+            .request(Request.Builder().url("http://localhost/api/auth/register").build())
+            .build()
+        val response = Response.error<ApiResponse<UserResponse?>>(
+            body.toResponseBody("application/json".toMediaType()),
+            rawResponse
+        )
+        return HttpException(response)
     }
 }

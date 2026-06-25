@@ -136,6 +136,7 @@ val ensureNoteshareServer by tasks.registering {
             }
         } else {
             println("NoteShare backend is already running on 127.0.0.1:$port")
+            println("If you changed noteshare-server code, stop the process on port $port and rebuild, or run scripts/test-like-flow.ps1 after restart.")
         }
 
         if (!isServerReady()) {

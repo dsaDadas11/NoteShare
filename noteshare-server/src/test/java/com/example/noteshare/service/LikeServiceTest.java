@@ -10,11 +10,12 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.springframework.dao.DataIntegrityViolationException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -39,38 +40,52 @@ class LikeServiceTest {
     }
 
     @Test
-    void like_ConcurrentDuplicate_doesNotIncrementCount() {
+    void like_AlreadyExists_throwsWithoutCreatingDuplicate() {
         when(noteRepository.existsById(100L)).thenReturn(true);
-        when(likeRelRepository.saveAndFlush(any(LikeRel.class)))
-                .thenThrow(new DataIntegrityViolationException("duplicate like"));
+        when(likeRelRepository.existsByUserIdAndNoteId(1L, 100L)).thenReturn(true);
 
         BusinessException exception = assertThrows(
                 BusinessException.class,
                 () -> likeService.like(1L, 100L));
 
         assertEquals(ErrorCode.LIKE_ALREADY, exception.getErrorCode());
-        verify(noteRepository, never()).incrementLikeCount(100L);
+        verify(likeRelRepository, never()).saveAndFlush(any(LikeRel.class));
+        verify(noteRepository, never()).setLikeCount(anyLong(), anyInt());
         verify(notificationService, never()).createLikeNotification(any(), any());
     }
 
     @Test
-    void unlike_NoDeletedRow_doesNotDecrementCount() {
-        when(likeRelRepository.deleteByUserIdAndNoteId(1L, 100L)).thenReturn(0);
+    void like_NewLike_syncsLikeCount() {
+        when(noteRepository.existsById(100L)).thenReturn(true);
+        when(likeRelRepository.existsByUserIdAndNoteId(1L, 100L)).thenReturn(false);
+        when(likeRelRepository.countByNoteId(100L)).thenReturn(1L);
+
+        likeService.like(1L, 100L);
+
+        verify(likeRelRepository).saveAndFlush(any(LikeRel.class));
+        verify(noteRepository).setLikeCount(100L, 1);
+        verify(notificationService).createLikeNotification(1L, 100L);
+    }
+
+    @Test
+    void unlike_NoDeletedRow_doesNotSyncCount() {
+        when(likeRelRepository.deleteByUserIdAndNoteId(1L, 100L)).thenReturn(0L);
 
         BusinessException exception = assertThrows(
                 BusinessException.class,
                 () -> likeService.unlike(1L, 100L));
 
         assertEquals(ErrorCode.LIKE_NOT_FOUND, exception.getErrorCode());
-        verify(noteRepository, never()).decrementLikeCount(100L);
+        verify(noteRepository, never()).setLikeCount(anyLong(), anyInt());
     }
 
     @Test
-    void unlike_DeletedRow_decrementsCount() {
-        when(likeRelRepository.deleteByUserIdAndNoteId(1L, 100L)).thenReturn(1);
+    void unlike_DeletedRow_syncsLikeCount() {
+        when(likeRelRepository.deleteByUserIdAndNoteId(1L, 100L)).thenReturn(1L);
+        when(likeRelRepository.countByNoteId(100L)).thenReturn(0L);
 
         likeService.unlike(1L, 100L);
 
-        verify(noteRepository).decrementLikeCount(100L);
+        verify(noteRepository).setLikeCount(100L, 0);
     }
 }

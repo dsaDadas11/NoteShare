@@ -114,7 +114,7 @@ public class NoteService {
         resp.setId(note.getId());
         resp.setTitle(note.getTitle());
         resp.setContent(note.getContent());
-        resp.setLikeCount(note.getLikeCount());
+        resp.setLikeCount((int) likeRelRepository.countByNoteId(noteId));
         resp.setCommentCount(note.getCommentCount());
         resp.setCreatedAt(note.getCreatedAt());
 

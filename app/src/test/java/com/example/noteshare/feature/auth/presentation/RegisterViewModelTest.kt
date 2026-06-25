@@ -211,6 +211,17 @@ class RegisterViewModelTest {
     }
 
     @Test
+    fun register_invalidUsernameFormat_showsServerValidationMessage() = runTest {
+        coEvery { authRepository.register(any()) } returns Result.Error(
+            ErrorCode.PARAM_INVALID,
+            "username: 用户名只能包含字母、数字、下划线"
+        )
+        viewModel.register("user@name", "password123", "password123")
+        advanceUntilIdle()
+        assertEquals("username: 用户名只能包含字母、数字、下划线", viewModel.uiState.value.error)
+    }
+
+    @Test
     fun register_serverError_showsServerErrorMessage() = runTest {
         coEvery { authRepository.register(any()) } returns Result.Error(
             ErrorCode.SERVER_ERROR, "服务器内部错误"

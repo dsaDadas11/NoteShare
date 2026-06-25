@@ -4,13 +4,12 @@ import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import com.example.noteshare.core.common.ErrorCode
 import com.example.noteshare.core.common.Result
-import com.example.noteshare.core.network.ApiResponse
 import com.example.noteshare.core.network.PageData
 import com.example.noteshare.feature.feed.data.NoteDetailRepository
 import com.example.noteshare.feature.feed.domain.model.CommentResponse
 import com.example.noteshare.feature.feed.domain.model.NoteDetailResponse
 import com.example.noteshare.feature.feed.domain.model.UserBrief
-import com.example.noteshare.feature.profile.data.UserApi
+import com.example.noteshare.feature.profile.data.ProfileRepository
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -37,7 +36,7 @@ class NoteDetailViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var repository: NoteDetailRepository
-    private lateinit var userApi: UserApi
+    private lateinit var profileRepository: ProfileRepository
     private lateinit var savedStateHandle: SavedStateHandle
 
     private val testAuthor = UserBrief(id = 10L, username = "author", nickname = "Author")
@@ -55,13 +54,12 @@ class NoteDetailViewModelTest {
     private val testCommentsPage = PageData(
         items = listOf(testComment), page = 1, pageSize = 20, total = 10, hasMore = true
     )
-    private val successUnitResponse = ApiResponse<Unit>(code = ErrorCode.SUCCESS, message = "ok")
 
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         repository = mockk(relaxed = false)
-        userApi = mockk(relaxed = false)
+        profileRepository = mockk(relaxed = false)
         savedStateHandle = SavedStateHandle(mapOf("noteId" to "100"))
 
         coEvery { repository.getNoteDetail(100L) } returns Result.Success(testNoteDetail)
@@ -74,8 +72,8 @@ class NoteDetailViewModelTest {
         coEvery { repository.likeComment(100L, any()) } returns Result.Success(Unit)
         coEvery { repository.unlikeComment(100L, any()) } returns Result.Success(Unit)
         coEvery { repository.createComment(100L, any(), any(), any()) } returns Result.Success(testComment)
-        coEvery { userApi.followUser(10L) } returns successUnitResponse
-        coEvery { userApi.unfollowUser(10L) } returns successUnitResponse
+        coEvery { profileRepository.followUser(10L) } returns Result.Success(Unit)
+        coEvery { profileRepository.unfollowUser(10L) } returns Result.Success(Unit)
     }
 
     @After
@@ -85,7 +83,7 @@ class NoteDetailViewModelTest {
 
     /** 创建 ViewModel，自动加载笔记详情和评论列表 */
     private fun createViewModel(): NoteDetailViewModel {
-        return NoteDetailViewModel(repository, userApi, savedStateHandle).also {
+        return NoteDetailViewModel(repository, profileRepository, savedStateHandle).also {
             testDispatcher.scheduler.advanceUntilIdle()
         }
     }
@@ -122,7 +120,7 @@ class NoteDetailViewModelTest {
     @Test
     fun init_invalidNoteId_showsError() = runTest {
         val badHandle = SavedStateHandle(mapOf("noteId" to "0"))
-        val vm = NoteDetailViewModel(repository, userApi, badHandle)
+        val vm = NoteDetailViewModel(repository, profileRepository, badHandle)
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals("无效的笔记 ID", vm.uiState.value.error)
@@ -132,7 +130,7 @@ class NoteDetailViewModelTest {
     @Test
     fun init_nonNumericNoteId_showsError() = runTest {
         val badHandle = SavedStateHandle(mapOf("noteId" to "abc"))
-        val vm = NoteDetailViewModel(repository, userApi, badHandle)
+        val vm = NoteDetailViewModel(repository, profileRepository, badHandle)
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals("无效的笔记 ID", vm.uiState.value.error)
@@ -145,17 +143,21 @@ class NoteDetailViewModelTest {
     /** 点赞成功时乐观更新 isLiked 和 likeCount */
     @Test
     fun toggleLike_notLiked_success_updatesIsLikedAndCount() = runTest {
+        val syncedLiked = testNoteDetail.copy(isLiked = true, likeCount = 6)
+        coEvery { repository.getNoteDetail(100L) } returnsMany listOf(
+            Result.Success(testNoteDetail),
+            Result.Success(syncedLiked)
+        )
+
         val vm = createViewModel()
         assertEquals(false, vm.uiState.value.noteDetail?.isLiked)
         assertEquals(5, vm.uiState.value.noteDetail?.likeCount)
 
         vm.toggleLike()
-        // 乐观更新立即生效
         assertTrue(vm.uiState.value.noteDetail?.isLiked == true)
         assertEquals(6, vm.uiState.value.noteDetail?.likeCount)
 
         testDispatcher.scheduler.advanceUntilIdle()
-        // 成功后状态保持
         assertTrue(vm.uiState.value.noteDetail?.isLiked == true)
         assertEquals(6, vm.uiState.value.noteDetail?.likeCount)
     }
@@ -164,29 +166,98 @@ class NoteDetailViewModelTest {
     @Test
     fun toggleLike_liked_success_decrementsCount() = runTest {
         val likedNote = testNoteDetail.copy(isLiked = true, likeCount = 5)
-        coEvery { repository.getNoteDetail(100L) } returns Result.Success(likedNote)
+        val syncedUnliked = testNoteDetail.copy(isLiked = false, likeCount = 4)
+        coEvery { repository.getNoteDetail(100L) } returnsMany listOf(
+            Result.Success(likedNote),
+            Result.Success(syncedUnliked)
+        )
 
         val vm = createViewModel()
         assertTrue(vm.uiState.value.noteDetail?.isLiked == true)
 
         vm.toggleLike()
+        testDispatcher.scheduler.advanceUntilIdle()
         assertFalse(vm.uiState.value.noteDetail?.isLiked == true)
         assertEquals(4, vm.uiState.value.noteDetail?.likeCount)
     }
 
-    /** 点赞失败时回滚乐观更新并显示错误 */
+    /** 点赞数为 0 时取消点赞不应变成负数 */
     @Test
-    fun toggleLike_error_revertsOptimisticUpdate() = runTest {
+    fun toggleLike_unlikeWhenCountZero_doesNotGoNegative() = runTest {
+        val likedNote = testNoteDetail.copy(isLiked = true, likeCount = 0)
+        val syncedUnliked = testNoteDetail.copy(isLiked = false, likeCount = 0)
+        coEvery { repository.getNoteDetail(100L) } returnsMany listOf(
+            Result.Success(likedNote),
+            Result.Success(syncedUnliked)
+        )
+
+        val vm = createViewModel()
+        vm.toggleLike()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertFalse(vm.uiState.value.noteDetail?.isLiked == true)
+        assertEquals(0, vm.uiState.value.noteDetail?.likeCount)
+    }
+
+    /** 服务端已点赞时同步详情，不展示重复点赞错误 */
+    @Test
+    fun toggleLike_alreadyLiked_syncsFromServer() = runTest {
+        val syncedLiked = testNoteDetail.copy(isLiked = true, likeCount = 6)
+        coEvery { repository.getNoteDetail(100L) } returnsMany listOf(
+            Result.Success(testNoteDetail),
+            Result.Success(syncedLiked)
+        )
         coEvery { repository.likeNote(100L) } returns Result.Error(ErrorCode.ALREADY_LIKED, "已经点赞")
 
         val vm = createViewModel()
         vm.toggleLike()
         testDispatcher.scheduler.advanceUntilIdle()
 
-        // 回滚：保持未点赞状态
+        assertTrue(vm.uiState.value.noteDetail?.isLiked == true)
+        assertEquals(6, vm.uiState.value.noteDetail?.likeCount)
+        assertNull(vm.uiState.value.error)
+    }
+
+    @Test
+    fun toggleLike_likeUnlikeLike_success() = runTest {
+        val syncedLiked = testNoteDetail.copy(isLiked = true, likeCount = 6)
+        val syncedUnliked = testNoteDetail.copy(isLiked = false, likeCount = 5)
+        coEvery { repository.getNoteDetail(100L) } returnsMany listOf(
+            Result.Success(testNoteDetail),
+            Result.Success(syncedLiked),
+            Result.Success(syncedUnliked),
+            Result.Success(syncedLiked)
+        )
+
+        val vm = createViewModel()
+
+        vm.toggleLike()
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertTrue(vm.uiState.value.noteDetail?.isLiked == true)
+        assertEquals(6, vm.uiState.value.noteDetail?.likeCount)
+
+        vm.toggleLike()
+        testDispatcher.scheduler.advanceUntilIdle()
         assertFalse(vm.uiState.value.noteDetail?.isLiked == true)
         assertEquals(5, vm.uiState.value.noteDetail?.likeCount)
-        assertNotNull(vm.uiState.value.error)
+
+        vm.toggleLike()
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertTrue(vm.uiState.value.noteDetail?.isLiked == true)
+        assertEquals(6, vm.uiState.value.noteDetail?.likeCount)
+        assertNull(vm.uiState.value.error)
+    }
+
+    @Test
+    fun toggleLike_networkError_revertsOptimisticUpdate() = runTest {
+        coEvery { repository.likeNote(100L) } returns Result.Error(ErrorCode.NETWORK_ERROR, "网络错误")
+
+        val vm = createViewModel()
+        vm.toggleLike()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertFalse(vm.uiState.value.noteDetail?.isLiked == true)
+        assertEquals(5, vm.uiState.value.noteDetail?.likeCount)
     }
 
     /** noteDetail 为 null 时 toggleLike 不崩溃 */
@@ -255,7 +326,7 @@ class NoteDetailViewModelTest {
     /** 关注失败回滚 */
     @Test
     fun toggleAuthorFollow_error_revertsOptimisticUpdate() = runTest {
-        coEvery { userApi.followUser(10L) } returns ApiResponse(code = ErrorCode.USER_NOT_FOUND, message = "用户不存在")
+        coEvery { profileRepository.followUser(10L) } returns Result.Error(ErrorCode.USER_NOT_FOUND, "用户不存在")
 
         val vm = createViewModel()
         vm.toggleAuthorFollow()
@@ -275,7 +346,7 @@ class NoteDetailViewModelTest {
         vm.toggleAuthorFollow()
         testDispatcher.scheduler.advanceUntilIdle()
 
-        coVerify(exactly = 0) { userApi.followUser(any()) }
+        coVerify(exactly = 0) { profileRepository.followUser(any()) }
     }
 
     // ================================================================
@@ -560,8 +631,8 @@ class NoteDetailViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         val updated = vm.uiState.value.comments.find { it.id == 200L }
-        assertFalse(updated?.liked == true)
-        assertEquals(2, updated?.likeCount) // 回滚到原始值
+        assertTrue(updated?.liked == true)
+        assertEquals(3, updated?.likeCount)
         assertNotNull(vm.uiState.value.error)
     }
 

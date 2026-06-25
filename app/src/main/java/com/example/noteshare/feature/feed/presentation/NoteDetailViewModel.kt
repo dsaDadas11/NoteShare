@@ -8,7 +8,7 @@ import com.example.noteshare.core.common.Result
 import com.example.noteshare.feature.feed.data.NoteDetailRepository
 import com.example.noteshare.feature.feed.domain.model.CommentResponse
 import com.example.noteshare.feature.feed.domain.model.NoteDetailResponse
-import com.example.noteshare.feature.profile.data.UserApi
+import com.example.noteshare.feature.profile.data.ProfileRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -56,7 +56,7 @@ data class NoteDetailUiState(
 @HiltViewModel
 class NoteDetailViewModel @Inject constructor(
     private val repository: NoteDetailRepository,
-    private val userApi: UserApi,
+    private val profileRepository: ProfileRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -66,6 +66,7 @@ class NoteDetailViewModel @Inject constructor(
     val uiState: StateFlow<NoteDetailUiState> = _uiState.asStateFlow()
 
     private var noteDetailRequestGeneration = 0L
+    private var likeToggleGeneration = 0L
     private var commentsRequestGeneration = 0L
     private val repliesRequestGeneration = mutableMapOf<Long, Long>()
     private val pendingCommentLikeIds = mutableSetOf<Long>()
@@ -130,31 +131,56 @@ class NoteDetailViewModel @Inject constructor(
     }
 
     fun toggleLike() {
-        val detail = _uiState.value.noteDetail ?: return
+        val snapshot = _uiState.value.noteDetail ?: return
         if (_uiState.value.isTogglingLike) return
-        val currentlyLiked = detail.isLiked
-        noteDetailRequestGeneration++
+        val currentlyLiked = snapshot.isLiked
+        val generation = ++likeToggleGeneration
 
         _uiState.update { state ->
-            val updatedDetail = state.noteDetail?.copy(
-                isLiked = !currentlyLiked,
-                likeCount = state.noteDetail.likeCount + if (currentlyLiked) -1 else 1
+            val detail = state.noteDetail ?: return@update state
+            state.copy(
+                noteDetail = detail.copy(
+                    isLiked = !currentlyLiked,
+                    likeCount = maxOf(0, detail.likeCount + if (currentlyLiked) -1 else 1)
+                ),
+                isTogglingLike = true,
+                error = null
             )
-            state.copy(noteDetail = updatedDetail, isTogglingLike = true)
         }
 
         viewModelScope.launch {
             val result = if (currentlyLiked) repository.unlikeNote(noteId) else repository.likeNote(noteId)
-            if (result is Result.Error) {
-                _uiState.update { state ->
-                    val revertedDetail = state.noteDetail?.copy(
-                        isLiked = currentlyLiked,
-                        likeCount = state.noteDetail.likeCount + if (currentlyLiked) 1 else -1
-                    )
-                    state.copy(noteDetail = revertedDetail, error = "操作失败: ${result.message}", isTogglingLike = false)
-                }
-            } else {
+            if (generation != likeToggleGeneration) {
                 _uiState.update { it.copy(isTogglingLike = false) }
+                return@launch
+            }
+
+            when {
+                result is Result.Success || isIdempotentLikeError(result) -> {
+                    syncNoteDetailAfterLikeToggle(generation)
+                }
+                result is Result.Error -> {
+                    _uiState.update { state ->
+                        state.copy(
+                            noteDetail = snapshot,
+                            isTogglingLike = false,
+                            error = "操作失败: ${result.message}"
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private suspend fun syncNoteDetailAfterLikeToggle(toggleGeneration: Long) {
+        when (val result = repository.getNoteDetail(noteId)) {
+            is Result.Success -> {
+                if (toggleGeneration != likeToggleGeneration) return
+                _uiState.update { it.copy(noteDetail = result.data, isTogglingLike = false) }
+            }
+            is Result.Error -> {
+                if (toggleGeneration != likeToggleGeneration) return
+                _uiState.update { it.copy(isTogglingLike = false, error = result.message) }
             }
         }
     }
@@ -174,21 +200,9 @@ class NoteDetailViewModel @Inject constructor(
 
         viewModelScope.launch {
             val result = if (currentlyFollowing) {
-                try {
-                    val response = userApi.unfollowUser(detail.author.id)
-                    if (response.code == ErrorCode.SUCCESS) Result.Success(Unit)
-                    else Result.Error(response.code, response.message)
-                } catch (e: Exception) {
-                    Result.Error(ErrorCode.NETWORK_ERROR, "网络请求失败: ${e.message}")
-                }
+                profileRepository.unfollowUser(detail.author.id)
             } else {
-                try {
-                    val response = userApi.followUser(detail.author.id)
-                    if (response.code == ErrorCode.SUCCESS) Result.Success(Unit)
-                    else Result.Error(response.code, response.message)
-                } catch (e: Exception) {
-                    Result.Error(ErrorCode.NETWORK_ERROR, "网络请求失败: ${e.message}")
-                }
+                profileRepository.followUser(detail.author.id)
             }
 
             _uiState.update { state ->
@@ -447,8 +461,12 @@ class NoteDetailViewModel @Inject constructor(
                 repository.likeComment(noteId, commentId)
             }
             if (result is Result.Error) {
-                // 回滚
-                updateCommentOptimistic(commentId, currentlyLiked, comment.likeCount)
+                val (resolvedLiked, resolvedCount) = resolveCommentLikeStateAfterError(
+                    currentlyLiked = currentlyLiked,
+                    originalLikeCount = comment.likeCount,
+                    errorCode = result.code
+                )
+                updateCommentOptimistic(commentId, resolvedLiked, resolvedCount)
                 _uiState.update { it.copy(error = "操作失败: ${result.message}") }
             }
             pendingCommentLikeIds.remove(commentId)
@@ -513,4 +531,20 @@ class NoteDetailViewModel @Inject constructor(
     fun errorShown() {
         _uiState.update { it.copy(error = null) }
     }
+}
+
+private fun isIdempotentLikeError(result: Result<*>): Boolean {
+    return result is Result.Error && (
+        result.code == ErrorCode.ALREADY_LIKED || result.code == ErrorCode.NOT_LIKED
+    )
+}
+
+private fun resolveCommentLikeStateAfterError(
+    currentlyLiked: Boolean,
+    originalLikeCount: Int,
+    errorCode: Int
+): Pair<Boolean, Int> = when (errorCode) {
+    ErrorCode.COMMENT_LIKE_ALREADY -> true to maxOf(0, originalLikeCount + 1)
+    ErrorCode.COMMENT_LIKE_NOT_FOUND -> false to maxOf(0, originalLikeCount - 1)
+    else -> currentlyLiked to maxOf(0, originalLikeCount)
 }

@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import com.example.noteshare.core.common.ErrorCode
 import com.example.noteshare.core.common.Result
+import com.example.noteshare.core.common.mapApiException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -51,7 +52,7 @@ suspend fun uploadFile(
             Result.Error(response.code, response.message)
         }
     } catch (e: Exception) {
-        Result.Error(ErrorCode.NETWORK_ERROR, "图片上传失败: ${e.message}")
+        mapApiException(e, "图片上传失败")
     }
 }
 
@@ -95,6 +96,6 @@ suspend fun uploadVideo(
             Result.Error(response.code, response.message)
         }
     } catch (e: Exception) {
-        Result.Error(ErrorCode.NETWORK_ERROR, "视频上传失败: ${e.message}")
+        mapApiException(e, "视频上传失败")
     }
 }

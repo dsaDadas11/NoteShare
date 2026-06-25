@@ -17,6 +17,10 @@ public interface NoteRepository extends JpaRepository<Note, Long> {
     @Query("UPDATE Note n SET n.likeCount = n.likeCount + 1 WHERE n.id = :id")
     void incrementLikeCount(@Param("id") Long id);
 
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE Note n SET n.likeCount = :count WHERE n.id = :id")
+    void setLikeCount(@Param("id") Long id, @Param("count") int count);
+
     @Modifying(clearAutomatically = true)
     @Query("UPDATE Note n SET n.likeCount = n.likeCount - 1 WHERE n.id = :id AND n.likeCount > 0")
     void decrementLikeCount(@Param("id") Long id);

@@ -1,6 +1,34 @@
 package com.example.noteshare.core.common
 
 import com.example.noteshare.core.network.ApiResponse
+import kotlinx.serialization.json.Json
+import retrofit2.HttpException
+
+private val apiErrorJson = Json {
+    ignoreUnknownKeys = true
+    coerceInputValues = true
+}
+
+/**
+ * 解析 HTTP 4xx/5xx 响应体中的业务错误信息。
+ * 服务端校验失败等场景会返回 HTTP 400，但 body 仍是 ApiResponse 格式。
+ */
+internal fun parseHttpException(e: HttpException): Result.Error? {
+    val body = e.response()?.errorBody()?.string() ?: return null
+    return try {
+        val response = apiErrorJson.decodeFromString<ApiResponse<String?>>(body)
+        Result.Error(response.code, response.message.ifBlank { "请求失败" })
+    } catch (_: Exception) {
+        null
+    }
+}
+
+internal fun mapApiException(e: Exception, errorMessage: String): Result.Error {
+    if (e is HttpException) {
+        parseHttpException(e)?.let { return it }
+    }
+    return Result.Error(ErrorCode.NETWORK_ERROR, "$errorMessage: ${e.message}")
+}
 
 /**
  * 通用 API 调用包装，统一处理 try/catch 和响应码校验。
@@ -25,7 +53,7 @@ suspend fun <T> safeApiCall(
             Result.Error(response.code, response.message ?: "请求失败")
         }
     } catch (e: Exception) {
-        Result.Error(ErrorCode.NETWORK_ERROR, "$errorMessage: ${e.message}")
+        mapApiException(e, errorMessage)
     }
 }
 
@@ -44,6 +72,6 @@ suspend fun safeApiCallUnit(
             Result.Error(response.code, response.message ?: "请求失败")
         }
     } catch (e: Exception) {
-        Result.Error(ErrorCode.NETWORK_ERROR, "$errorMessage: ${e.message}")
+        mapApiException(e, errorMessage)
     }
 }
