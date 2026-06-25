@@ -9,6 +9,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -29,6 +30,8 @@ class NotificationViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(NotificationUiState())
     val uiState: StateFlow<NotificationUiState> = _uiState.asStateFlow()
 
+    private var requestGeneration = 0L
+
     init {
         loadNotifications()
         markAllAsRead()
@@ -36,22 +39,31 @@ class NotificationViewModel @Inject constructor(
 
     fun loadNotifications() {
         if (_uiState.value.isLoading) return
+        val generation = ++requestGeneration
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            _uiState.update {
+                it.copy(isLoading = true, isLoadingMore = false, error = null)
+            }
             when (val result = notificationRepository.getNotifications(page = 1)) {
                 is Result.Success -> {
-                    _uiState.value = _uiState.value.copy(
-                        notifications = result.data.items,
-                        isLoading = false,
-                        currentPage = 1,
-                        hasMore = result.data.hasMore
-                    )
+                    if (generation != requestGeneration) return@launch
+                    _uiState.update {
+                        it.copy(
+                            notifications = result.data.items,
+                            isLoading = false,
+                            currentPage = 1,
+                            hasMore = result.data.hasMore
+                        )
+                    }
                 }
                 is Result.Error -> {
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        error = result.message
-                    )
+                    if (generation != requestGeneration) return@launch
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = result.message
+                        )
+                    }
                 }
             }
         }
@@ -60,31 +72,36 @@ class NotificationViewModel @Inject constructor(
     fun loadMore() {
         if (_uiState.value.isLoading || _uiState.value.isLoadingMore || !_uiState.value.hasMore) return
         val nextPage = _uiState.value.currentPage + 1
+        val generation = requestGeneration
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoadingMore = true)
+            _uiState.update { it.copy(isLoadingMore = true) }
             when (val result = notificationRepository.getNotifications(page = nextPage)) {
                 is Result.Success -> {
-                    _uiState.value = _uiState.value.copy(
-                        notifications = _uiState.value.notifications + result.data.items,
-                        isLoadingMore = false,
-                        currentPage = nextPage,
-                        hasMore = result.data.hasMore
-                    )
+                    if (generation != requestGeneration) return@launch
+                    _uiState.update {
+                        it.copy(
+                            notifications = it.notifications + result.data.items,
+                            isLoadingMore = false,
+                            currentPage = result.data.page,
+                            hasMore = result.data.hasMore
+                        )
+                    }
                 }
                 is Result.Error -> {
-                    _uiState.value = _uiState.value.copy(isLoadingMore = false)
+                    if (generation != requestGeneration) return@launch
+                    _uiState.update { it.copy(isLoadingMore = false) }
                 }
             }
         }
+    }
+
+    fun errorShown() {
+        _uiState.update { it.copy(error = null) }
     }
 
     private fun markAllAsRead() {
         viewModelScope.launch {
             notificationRepository.markAllAsRead()
         }
-    }
-
-    fun errorShown() {
-        _uiState.value = _uiState.value.copy(error = null)
     }
 }

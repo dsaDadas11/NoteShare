@@ -65,6 +65,11 @@ class NoteDetailViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(NoteDetailUiState())
     val uiState: StateFlow<NoteDetailUiState> = _uiState.asStateFlow()
 
+    private var noteDetailRequestGeneration = 0L
+    private var commentsRequestGeneration = 0L
+    private val repliesRequestGeneration = mutableMapOf<Long, Long>()
+    private val pendingCommentLikeIds = mutableSetOf<Long>()
+
     init {
         if (noteId != 0L) {
             loadNoteDetail()
@@ -75,13 +80,16 @@ class NoteDetailViewModel @Inject constructor(
     }
 
     fun loadNoteDetail() {
+        val generation = ++noteDetailRequestGeneration
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             when (val result = repository.getNoteDetail(noteId)) {
                 is Result.Success -> {
+                    if (generation != noteDetailRequestGeneration) return@launch
                     _uiState.update { it.copy(isLoading = false, noteDetail = result.data) }
                 }
                 is Result.Error -> {
+                    if (generation != noteDetailRequestGeneration) return@launch
                     _uiState.update { it.copy(isLoading = false, error = result.message) }
                 }
             }
@@ -97,10 +105,12 @@ class NoteDetailViewModel @Inject constructor(
         }
 
         val pageToLoad = if (isRefresh) 1 else _uiState.value.commentCurrentPage + 1
+        val generation = ++commentsRequestGeneration
 
         viewModelScope.launch {
             when (val result = repository.getComments(noteId, pageToLoad)) {
                 is Result.Success -> {
+                    if (generation != commentsRequestGeneration) return@launch
                     val pageData = result.data
                     _uiState.update { state ->
                         state.copy(
@@ -112,6 +122,7 @@ class NoteDetailViewModel @Inject constructor(
                     }
                 }
                 is Result.Error -> {
+                    if (generation != commentsRequestGeneration) return@launch
                     _uiState.update { it.copy(commentsLoading = false, error = result.message) }
                 }
             }
@@ -122,6 +133,7 @@ class NoteDetailViewModel @Inject constructor(
         val detail = _uiState.value.noteDetail ?: return
         if (_uiState.value.isTogglingLike) return
         val currentlyLiked = detail.isLiked
+        noteDetailRequestGeneration++
 
         _uiState.update { state ->
             val updatedDetail = state.noteDetail?.copy(
@@ -151,6 +163,7 @@ class NoteDetailViewModel @Inject constructor(
         val detail = _uiState.value.noteDetail ?: return
         if (detail.isAuthorSelf || _uiState.value.isAuthorFollowLoading) return
         val currentlyFollowing = detail.isAuthorFollowed
+        noteDetailRequestGeneration++
 
         _uiState.update { state ->
             state.copy(
@@ -383,17 +396,23 @@ class NoteDetailViewModel @Inject constructor(
     fun expandReplies(commentId: Long) {
         // 如果已展开则折叠
         if (_uiState.value.expandedReplies.containsKey(commentId)) {
+            repliesRequestGeneration[commentId] = (repliesRequestGeneration[commentId] ?: 0L) + 1L
             _uiState.update { state ->
                 state.copy(expandedReplies = state.expandedReplies - commentId)
             }
             return
         }
+        if (_uiState.value.loadingReplies == commentId) return
+
+        val generation = (repliesRequestGeneration[commentId] ?: 0L) + 1L
+        repliesRequestGeneration[commentId] = generation
 
         // 加载全部回复
         viewModelScope.launch {
             _uiState.update { it.copy(loadingReplies = commentId) }
             when (val result = repository.getCommentReplies(noteId, commentId)) {
                 is Result.Success -> {
+                    if (repliesRequestGeneration[commentId] != generation) return@launch
                     _uiState.update { state ->
                         state.copy(
                             expandedReplies = state.expandedReplies + (commentId to result.data),
@@ -402,6 +421,7 @@ class NoteDetailViewModel @Inject constructor(
                     }
                 }
                 is Result.Error -> {
+                    if (repliesRequestGeneration[commentId] != generation) return@launch
                     _uiState.update { it.copy(loadingReplies = null, error = "加载回复失败: ${result.message}") }
                 }
             }
@@ -413,10 +433,12 @@ class NoteDetailViewModel @Inject constructor(
     fun toggleCommentLike(commentId: Long) {
         // 找到评论
         val comment = findComment(commentId) ?: return
+        if (!pendingCommentLikeIds.add(commentId)) return
         val currentlyLiked = comment.liked
 
         // 乐观更新
-        updateCommentOptimistic(commentId, !currentlyLiked, comment.likeCount + if (currentlyLiked) -1 else 1)
+        _uiState.update { it.copy(likingCommentId = commentId) }
+        updateCommentOptimistic(commentId, !currentlyLiked, maxOf(0, comment.likeCount + if (currentlyLiked) -1 else 1))
 
         viewModelScope.launch {
             val result = if (currentlyLiked) {
@@ -428,6 +450,10 @@ class NoteDetailViewModel @Inject constructor(
                 // 回滚
                 updateCommentOptimistic(commentId, currentlyLiked, comment.likeCount)
                 _uiState.update { it.copy(error = "操作失败: ${result.message}") }
+            }
+            pendingCommentLikeIds.remove(commentId)
+            _uiState.update {
+                it.copy(likingCommentId = pendingCommentLikeIds.firstOrNull())
             }
         }
     }

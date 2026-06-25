@@ -470,6 +470,25 @@ class PublishViewModelTest {
     }
 
     /**
+     * 发布请求未完成时重复点击，不应创建重复笔记
+     */
+    @Test
+    fun publish_whileLoading_doesNotSubmitAgain() = runTest {
+        coEvery { repository.createNote(any(), any(), any(), any()) } coAnswers {
+            kotlinx.coroutines.delay(5000)
+            Result.Success(mockk())
+        }
+
+        viewModel.updateTitle("Title")
+        viewModel.updateContent("Content")
+        viewModel.publish()
+        viewModel.publish()
+        testDispatcher.scheduler.runCurrent()
+
+        coVerify(exactly = 1) { repository.createNote("Title", "Content", emptyList(), null) }
+    }
+
+    /**
      * errorShown() 调用后，error 应被清除
      */
     @Test

@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -34,32 +35,53 @@ class SearchViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(SearchUiState())
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
 
+    private var requestGeneration = 0L
+    private var resetLoadMoreFailedJob: Job? = null
+
     fun updateKeyword(keyword: String) {
+        requestGeneration++
         _uiState.update { it.copy(keyword = keyword) }
     }
 
     fun clearKeyword() {
-        _uiState.update { it.copy(keyword = "", results = emptyList(), hasSearched = false, error = null) }
+        requestGeneration++
+        resetLoadMoreFailedJob?.cancel()
+        _uiState.update {
+            it.copy(
+                keyword = "",
+                results = emptyList(),
+                hasSearched = false,
+                isLoading = false,
+                isLoadingMore = false,
+                loadMoreFailed = false,
+                error = null
+            )
+        }
     }
 
     fun search() {
         val keyword = _uiState.value.keyword.trim()
         if (keyword.isEmpty()) return
 
+        val generation = ++requestGeneration
+        resetLoadMoreFailedJob?.cancel()
         _uiState.update { 
             it.copy(
                 isLoading = true, 
+                isLoadingMore = false,
                 hasSearched = true, 
                 error = null, 
                 results = emptyList(), 
                 currentPage = 1,
-                hasMore = true
+                hasMore = true,
+                loadMoreFailed = false
             ) 
         }
 
         viewModelScope.launch {
             when (val result = repository.searchNotes(keyword, 1)) {
                 is Result.Success -> {
+                    if (generation != requestGeneration) return@launch
                     _uiState.update { state ->
                         state.copy(
                             isLoading = false,
@@ -70,6 +92,7 @@ class SearchViewModel @Inject constructor(
                     }
                 }
                 is Result.Error -> {
+                    if (generation != requestGeneration) return@launch
                     _uiState.update { it.copy(isLoading = false, error = result.message) }
                 }
             }
@@ -82,10 +105,13 @@ class SearchViewModel @Inject constructor(
 
         _uiState.update { it.copy(isLoadingMore = true, error = null) }
         val nextPage = currentState.currentPage + 1
+        val keyword = currentState.keyword.trim()
+        val generation = requestGeneration
 
         viewModelScope.launch {
-            when (val result = repository.searchNotes(currentState.keyword.trim(), nextPage)) {
+            when (val result = repository.searchNotes(keyword, nextPage)) {
                 is Result.Success -> {
+                    if (generation != requestGeneration) return@launch
                     _uiState.update { state ->
                         state.copy(
                             isLoadingMore = false,
@@ -97,11 +123,15 @@ class SearchViewModel @Inject constructor(
                     }
                 }
                 is Result.Error -> {
+                    if (generation != requestGeneration) return@launch
                     _uiState.update { it.copy(isLoadingMore = false, error = result.message, loadMoreFailed = true) }
                     // Reset loadMoreFailed after 3 seconds to allow retry
-                    viewModelScope.launch {
+                    resetLoadMoreFailedJob?.cancel()
+                    resetLoadMoreFailedJob = viewModelScope.launch {
                         delay(3000)
-                        _uiState.update { it.copy(loadMoreFailed = false) }
+                        if (generation == requestGeneration) {
+                            _uiState.update { it.copy(loadMoreFailed = false) }
+                        }
                     }
                 }
             }

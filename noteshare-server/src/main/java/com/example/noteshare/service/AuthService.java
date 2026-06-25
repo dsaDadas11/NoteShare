@@ -9,6 +9,7 @@ import com.example.noteshare.dto.response.UserResponse;
 import com.example.noteshare.entity.User;
 import com.example.noteshare.repository.UserRepository;
 import com.example.noteshare.security.JwtUtil;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,7 +49,12 @@ public class AuthService {
         user.setNickname(req.getNickname() != null && !req.getNickname().isBlank()
                 ? req.getNickname() : req.getUsername());
 
-        userRepository.save(user);
+        try {
+            userRepository.save(user);
+            userRepository.flush();
+        } catch (DataIntegrityViolationException e) {
+            throw new BusinessException(ErrorCode.REGISTER_USERNAME_EXISTS);
+        }
 
         return UserResponse.from(user);
     }

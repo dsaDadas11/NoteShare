@@ -400,4 +400,39 @@ class FeedListViewModelTest {
         assertFalse(viewModel.uiState.value.isLoading)
         assertFalse(viewModel.uiState.value.isLoadingMore)
     }
+
+    /** 刷新完成后，旧的加载更多响应不应再追加到新列表 */
+    @Test
+    fun refresh_whileLoadMoreInFlight_ignoresOldLoadMoreResult() = runTest {
+        coEvery { repository.getNotes(1) } returns Result.Success(testPageData)
+        viewModel = FeedListViewModel(repository)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val oldLoadMore = kotlinx.coroutines.CompletableDeferred<Result<PageData<NoteResponse>>>()
+        coEvery { repository.getNotes(2) } coAnswers {
+            oldLoadMore.await()
+        }
+        viewModel.loadMore()
+        testDispatcher.scheduler.runCurrent()
+        assertTrue(viewModel.uiState.value.isLoadingMore)
+
+        val refreshedPage = PageData(
+            items = listOf(testNote.copy(id = 100L)),
+            page = 1,
+            pageSize = 20,
+            total = 1,
+            hasMore = false
+        )
+        coEvery { repository.getNotes(1) } returns Result.Success(refreshedPage)
+        viewModel.refresh()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(listOf(100L), viewModel.uiState.value.notes.map { it.id })
+        assertFalse(viewModel.uiState.value.isLoadingMore)
+
+        oldLoadMore.complete(Result.Success(lastPageData))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(listOf(100L), viewModel.uiState.value.notes.map { it.id })
+    }
 }

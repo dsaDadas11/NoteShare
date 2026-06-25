@@ -9,6 +9,7 @@ import com.example.noteshare.dto.response.UserBrief;
 import com.example.noteshare.entity.Comment;
 import com.example.noteshare.entity.User;
 import com.example.noteshare.repository.*;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -254,10 +255,13 @@ public class CommentService {
         if (!commentRepository.existsById(commentId)) {
             throw new BusinessException(ErrorCode.COMMENT_NOT_FOUND);
         }
-        if (commentLikeRelRepository.existsByUserIdAndCommentId(userId, commentId)) {
+
+        try {
+            commentLikeRelRepository.saveAndFlush(createCommentLike(userId, commentId));
+        } catch (DataIntegrityViolationException e) {
             throw new BusinessException(ErrorCode.COMMENT_LIKE_ALREADY);
         }
-        commentLikeRelRepository.save(createCommentLike(userId, commentId));
+
         commentRepository.incrementLikeCount(commentId);
     }
 
@@ -266,10 +270,10 @@ public class CommentService {
      */
     @Transactional
     public void unlikeComment(Long userId, Long commentId) {
-        if (!commentLikeRelRepository.existsByUserIdAndCommentId(userId, commentId)) {
+        int deleted = commentLikeRelRepository.deleteByUserIdAndCommentId(userId, commentId);
+        if (deleted == 0) {
             throw new BusinessException(ErrorCode.COMMENT_LIKE_NOT_FOUND);
         }
-        commentLikeRelRepository.deleteByUserIdAndCommentId(userId, commentId);
         commentRepository.decrementLikeCount(commentId);
     }
 

@@ -1,3 +1,7 @@
+import java.net.HttpURLConnection
+import java.net.URI
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     kotlin("android")
@@ -55,6 +59,18 @@ android {
     }
 }
 
+val localProperties = Properties().apply {
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        localPropertiesFile.inputStream().use { load(it) }
+    }
+}
+
+fun localOrEnv(localName: String, envName: String): String? {
+    return (localProperties.getProperty(localName) ?: System.getenv(envName))
+        ?.takeIf { it.isNotBlank() }
+}
+
 val ensureNoteshareServer by tasks.registering {
     group = "noteshare"
     description = "Start the Spring Boot backend on host tcp:8200 if it is not already running."
@@ -65,21 +81,24 @@ val ensureNoteshareServer by tasks.registering {
         val port = 8200
         println("Checking if NoteShare backend is running on port $port...")
 
-        // Lightweight TCP probe
-        fun isPortOpen(): Boolean {
+        // 发起 NoteShare 真实接口请求，确认应用和数据库都已可用（不只是端口监听）
+        fun isServerReady(): Boolean {
             return try {
-                val process = ProcessBuilder("cmd.exe", "/c", "netstat -an | findstr \":$port\" | findstr \"LISTENING\"")
-                    .redirectErrorStream(true)
-                    .start()
-                val output = process.inputStream.bufferedReader().readText()
-                process.waitFor()
-                output.isNotBlank()
+                val conn = URI("http://127.0.0.1:$port/api/notes?page=1&size=1").toURL()
+                    .openConnection() as HttpURLConnection
+                conn.connectTimeout = 2000
+                conn.readTimeout = 2000
+                conn.requestMethod = "GET"
+                conn.connect()
+                val code = conn.responseCode
+                conn.disconnect()
+                code in 200..299
             } catch (_: Exception) {
                 false
             }
         }
 
-        if (!isPortOpen()) {
+        if (!isServerReady()) {
             if (!serverDir.exists()) {
                 println("WARNING: Server directory not found: $serverDir")
                 return@doLast
@@ -90,16 +109,28 @@ val ensureNoteshareServer by tasks.registering {
             if (outLog.exists()) outLog.delete()
             if (errLog.exists()) errLog.delete()
 
-            println("Starting NoteShare backend in $serverDir ...")
-            ProcessBuilder("cmd.exe", "/c", "mvnw.cmd", "spring-boot:run", "-Dspring-boot.run.profiles=dev")
+            val dbPassword = localOrEnv("noteshareDbPassword", "DB_PASSWORD")
+            val jwtSecret = localOrEnv("noteshareJwtSecret", "JWT_SECRET")
+            if (dbPassword == null || jwtSecret == null) {
+                println("WARNING: Missing noteshareDbPassword/noteshareJwtSecret in local.properties or DB_PASSWORD/JWT_SECRET environment variables.")
+                return@doLast
+            }
+
+            println("Starting NoteShare backend in $serverDir using MySQL configuration...")
+            val backendProcess = ProcessBuilder("cmd.exe", "/c", "mvnw.cmd", "spring-boot:run")
+            backendProcess.environment()["DB_PASSWORD"] = dbPassword
+            backendProcess.environment()["JWT_SECRET"] = jwtSecret
+            backendProcess.environment()["JPA_DDL_AUTO"] =
+                localOrEnv("noteshareJpaDdlAuto", "JPA_DDL_AUTO") ?: "update"
+            backendProcess
                 .directory(serverDir)
                 .redirectOutput(outLog)
                 .redirectError(errLog)
                 .start()
 
-            println("Waiting for backend to start on 127.0.0.1:$port (timeout 60s)...")
-            val deadline = System.currentTimeMillis() + 60_000
-            while (!isPortOpen() && System.currentTimeMillis() < deadline) {
+            println("Waiting for backend to be ready on 127.0.0.1:$port (timeout 90s)...")
+            val deadline = System.currentTimeMillis() + 90_000
+            while (!isServerReady() && System.currentTimeMillis() < deadline) {
                 Thread.sleep(2000)
                 println("Still waiting...")
             }
@@ -107,8 +138,8 @@ val ensureNoteshareServer by tasks.registering {
             println("NoteShare backend is already running on 127.0.0.1:$port")
         }
 
-        if (!isPortOpen()) {
-            println("WARNING: NoteShare backend did not start. The app will show network errors until the server is available.")
+        if (!isServerReady()) {
+            println("WARNING: NoteShare backend did not fully start. The app will show network errors until the server is available.")
         } else {
             println("NoteShare backend is ready.")
         }

@@ -375,4 +375,39 @@ class SearchViewModelTest {
         assertEquals(1, viewModel.uiState.value.currentPage)
         assertEquals(1, viewModel.uiState.value.results.size)
     }
+
+    /** 旧关键词请求后返回时，不应覆盖新关键词结果 */
+    @Test
+    fun search_oldResponseAfterNewSearch_isIgnored() = runTest {
+        val oldResult = kotlinx.coroutines.CompletableDeferred<Result<PageData<NoteResponse>>>()
+        coEvery { repository.searchNotes("kotlin", 1) } coAnswers {
+            oldResult.await()
+        }
+        coEvery { repository.searchNotes("java", 1) } returns Result.Success(
+            PageData(
+                items = listOf(testNote.copy(id = 99L, title = "Java Notes")),
+                page = 1,
+                pageSize = 20,
+                total = 1,
+                hasMore = false
+            )
+        )
+
+        viewModel.updateKeyword("kotlin")
+        viewModel.search()
+        testDispatcher.scheduler.runCurrent()
+
+        viewModel.updateKeyword("java")
+        viewModel.search()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("java", viewModel.uiState.value.keyword)
+        assertEquals(99L, viewModel.uiState.value.results.single().id)
+
+        oldResult.complete(Result.Success(searchResultPage))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("java", viewModel.uiState.value.keyword)
+        assertEquals(99L, viewModel.uiState.value.results.single().id)
+    }
 }

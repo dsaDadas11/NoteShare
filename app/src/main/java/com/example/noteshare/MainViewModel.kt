@@ -12,6 +12,7 @@ import com.example.noteshare.feature.profile.data.UserApi
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,25 +39,33 @@ class MainViewModel @Inject constructor(
     val unauthorizedEvents = unauthorizedEventBus.events
 
     private var pollingJob: Job? = null
+    private var unreadFetchJob: Job? = null
+    private var sessionGeneration = 0L
+    private var unreadGeneration = 0L
 
     init {
         checkLoginStatus()
+        observeUnauthorizedEvents()
     }
 
     private fun checkLoginStatus() {
+        val generation = ++sessionGeneration
         viewModelScope.launch {
             val token = tokenManager.tokenFlow.firstOrNull()
+            if (generation != sessionGeneration) return@launch
             if (token.isNullOrEmpty()) {
                 _loginState.value = false
+                _unreadCount.value = 0
             } else {
                 val valid = validateToken()
+                if (generation != sessionGeneration) return@launch
                 _loginState.value = valid
                 if (!valid) {
-                    tokenManager.clearToken()
-                    tokenInterceptor.invalidateCache()
+                    endSession()
                 } else {
-                    fetchUnreadCount()
-                    startPollingUnreadCount()
+                    unreadGeneration++
+                    requestUnreadCount(generation)
+                    startPollingUnreadCount(generation)
                 }
             }
         }
@@ -73,48 +82,76 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    private fun fetchUnreadCount() {
-        viewModelScope.launch {
-            when (val result = notificationRepository.getUnreadCount()) {
-                is Result.Success -> {
+    private fun requestUnreadCount(session: Long = sessionGeneration) {
+        val unreadRequest = unreadGeneration
+        unreadFetchJob?.cancel()
+        unreadFetchJob = viewModelScope.launch {
+            updateUnreadCount(session, unreadRequest)
+        }
+    }
+
+    private suspend fun updateUnreadCount(session: Long, unreadRequest: Long) {
+        when (val result = notificationRepository.getUnreadCount()) {
+            is Result.Success -> {
+                if (session == sessionGeneration && unreadRequest == unreadGeneration) {
                     _unreadCount.value = result.data.toLong()
                 }
-                is Result.Error -> { /* ignore */ }
             }
+            is Result.Error -> { /* ignore */ }
         }
     }
 
     /** 每 5 秒轮询未读数，自动取消上一次轮询 */
-    private fun startPollingUnreadCount() {
+    private fun startPollingUnreadCount(session: Long = sessionGeneration) {
         pollingJob?.cancel()
         pollingJob = viewModelScope.launch {
-            while (true) {
+            while (session == sessionGeneration) {
                 delay(5_000)
-                fetchUnreadCount()
+                updateUnreadCount(session, unreadGeneration)
             }
         }
     }
 
     /** 进入通知页后调用，清零未读数 */
     fun clearUnreadCount() {
+        unreadGeneration++
+        unreadFetchJob?.cancel()
         _unreadCount.value = 0
     }
 
     /** 登录成功后调用，刷新登录状态并获取未读数 */
     fun onLoginSuccess() {
+        val generation = ++sessionGeneration
+        unreadGeneration++
         _loginState.value = true
-        fetchUnreadCount()
-        startPollingUnreadCount()
+        requestUnreadCount(generation)
+        startPollingUnreadCount(generation)
     }
 
     fun logout() {
+        endSession()
+    }
+
+    private fun observeUnauthorizedEvents() {
+        viewModelScope.launch {
+            unauthorizedEventBus.events.collect {
+                endSession()
+            }
+        }
+    }
+
+    private fun endSession() {
+        sessionGeneration++
+        unreadGeneration++
         pollingJob?.cancel()
         pollingJob = null
+        unreadFetchJob?.cancel()
+        unreadFetchJob = null
+        _loginState.value = false
+        _unreadCount.value = 0
         viewModelScope.launch {
             tokenManager.clearToken()
             tokenInterceptor.invalidateCache()
-            _loginState.value = false
-            _unreadCount.value = 0
         }
     }
 }

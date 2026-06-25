@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -32,15 +33,28 @@ class FeedListViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(FeedUiState())
     val uiState: StateFlow<FeedUiState> = _uiState.asStateFlow()
 
+    private var requestGeneration = 0L
+    private var resetLoadMoreFailedJob: Job? = null
+
     init {
         refresh()
     }
 
     fun refresh() {
-        _uiState.update { it.copy(isLoading = true) }
+        val generation = ++requestGeneration
+        resetLoadMoreFailedJob?.cancel()
+        _uiState.update {
+            it.copy(
+                isLoading = true,
+                isLoadingMore = false,
+                loadMoreFailed = false,
+                error = null
+            )
+        }
         viewModelScope.launch {
             when (val result = repository.getNotes(1)) {
                 is Result.Success -> {
+                    if (generation != requestGeneration) return@launch
                     val pageData = result.data
                     _uiState.update { state ->
                         state.copy(
@@ -54,6 +68,7 @@ class FeedListViewModel @Inject constructor(
                     }
                 }
                 is Result.Error -> {
+                    if (generation != requestGeneration) return@launch
                     _uiState.update {
                         it.copy(error = result.message, isLoading = false)
                     }
@@ -68,10 +83,12 @@ class FeedListViewModel @Inject constructor(
 
         _uiState.update { it.copy(isLoadingMore = true, error = null) }
         val nextPage = currentState.currentPage + 1
+        val generation = requestGeneration
 
         viewModelScope.launch {
             when (val result = repository.getNotes(nextPage)) {
                 is Result.Success -> {
+                    if (generation != requestGeneration) return@launch
                     val pageData = result.data
                     _uiState.update { state ->
                         state.copy(
@@ -84,13 +101,17 @@ class FeedListViewModel @Inject constructor(
                     }
                 }
                 is Result.Error -> {
+                    if (generation != requestGeneration) return@launch
                     _uiState.update {
                         it.copy(isLoadingMore = false, error = result.message, loadMoreFailed = true)
                     }
                     // Reset loadMoreFailed after 3 seconds to allow retry
-                    viewModelScope.launch {
+                    resetLoadMoreFailedJob?.cancel()
+                    resetLoadMoreFailedJob = viewModelScope.launch {
                         delay(3000)
-                        _uiState.update { it.copy(loadMoreFailed = false) }
+                        if (generation == requestGeneration) {
+                            _uiState.update { it.copy(loadMoreFailed = false) }
+                        }
                     }
                 }
             }

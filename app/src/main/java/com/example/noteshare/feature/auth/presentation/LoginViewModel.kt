@@ -29,6 +29,7 @@ class LoginViewModel @Inject constructor(
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
     fun login(username: String, password: String) {
+        if (_uiState.value.isLoading) return
         if (username.length < 3 || username.length > 50) {
             _uiState.update { it.copy(error = "用户名长度必须在 3-50 个字符之间") }
             return
@@ -38,8 +39,8 @@ class LoginViewModel @Inject constructor(
             return
         }
 
+        _uiState.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
             val result = authRepository.login(LoginRequest(username, password))
             when (result) {
                 is Result.Success -> {

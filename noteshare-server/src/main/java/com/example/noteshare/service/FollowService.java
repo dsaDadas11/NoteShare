@@ -5,6 +5,7 @@ import com.example.noteshare.common.ErrorCode;
 import com.example.noteshare.entity.Follow;
 import com.example.noteshare.repository.FollowRepository;
 import com.example.noteshare.repository.UserRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,21 +28,23 @@ public class FollowService {
         if (!userRepository.existsById(followeeId)) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
-        if (followRepository.existsByFollowerIdAndFolloweeId(followerId, followeeId)) {
-            throw new BusinessException(ErrorCode.FOLLOW_ALREADY);
-        }
+
         Follow follow = new Follow();
         follow.setFollowerId(followerId);
         follow.setFolloweeId(followeeId);
-        followRepository.save(follow);
+        try {
+            followRepository.saveAndFlush(follow);
+        } catch (DataIntegrityViolationException e) {
+            throw new BusinessException(ErrorCode.FOLLOW_ALREADY);
+        }
     }
 
     @Transactional
     public void unfollow(Long followerId, Long followeeId) {
-        if (!followRepository.existsByFollowerIdAndFolloweeId(followerId, followeeId)) {
+        int deleted = followRepository.deleteByFollowerIdAndFolloweeId(followerId, followeeId);
+        if (deleted == 0) {
             throw new BusinessException(ErrorCode.FOLLOW_NOT_FOUND);
         }
-        followRepository.deleteByFollowerIdAndFolloweeId(followerId, followeeId);
     }
 
     public long getFollowingCount(Long userId) {

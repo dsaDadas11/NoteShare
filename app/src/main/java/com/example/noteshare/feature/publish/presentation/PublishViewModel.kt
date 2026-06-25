@@ -75,6 +75,7 @@ class PublishViewModel @Inject constructor(
 
     fun publish() {
         val currentState = _uiState.value
+        if (currentState.isLoading) return
         if (currentState.title.isBlank() || currentState.title.length > 100) {
             _uiState.update { it.copy(error = "标题长度必须在 1-100 之间") }
             return
@@ -84,9 +85,8 @@ class PublishViewModel @Inject constructor(
             return
         }
 
+        _uiState.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-            
             // 1. Upload images
             val uploadedUrls = mutableListOf<String>()
             for (uri in currentState.selectedImages) {

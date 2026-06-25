@@ -565,6 +565,27 @@ class NoteDetailViewModelTest {
         assertNotNull(vm.uiState.value.error)
     }
 
+    /** 同一评论点赞请求未完成时，重复点击不应发起第二个请求 */
+    @Test
+    fun toggleCommentLike_whilePending_doesNotToggleAgain() = runTest {
+        val pending = kotlinx.coroutines.CompletableDeferred<Result<Unit>>()
+        coEvery { repository.likeComment(100L, 200L) } coAnswers {
+            pending.await()
+        }
+
+        val vm = createViewModel()
+        vm.toggleCommentLike(200L)
+        vm.toggleCommentLike(200L)
+        testDispatcher.scheduler.runCurrent()
+
+        coVerify(exactly = 1) { repository.likeComment(100L, 200L) }
+        assertEquals(200L, vm.uiState.value.likingCommentId)
+
+        pending.complete(Result.Success(Unit))
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertNull(vm.uiState.value.likingCommentId)
+    }
+
     /** 找不到评论时不执行 */
     @Test
     fun toggleCommentLike_commentNotFound_doesNothing() = runTest {

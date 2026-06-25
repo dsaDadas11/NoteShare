@@ -9,6 +9,7 @@ import com.example.noteshare.dto.response.UserResponse;
 import com.example.noteshare.entity.User;
 import com.example.noteshare.repository.UserRepository;
 import com.example.noteshare.security.JwtUtil;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -76,6 +77,22 @@ class AuthServiceTest {
         BusinessException exception = assertThrows(BusinessException.class, () -> authService.register(req));
         assertEquals(ErrorCode.REGISTER_USERNAME_EXISTS, exception.getErrorCode());
         verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void register_ConcurrentDuplicateUsername() {
+        RegisterRequest req = new RegisterRequest();
+        req.setUsername("testuser");
+        req.setPassword("password123");
+
+        when(userRepository.existsByUsername("testuser")).thenReturn(false);
+        when(passwordEncoder.encode("password123")).thenReturn("encodedPassword");
+        doThrow(new DataIntegrityViolationException("duplicate username"))
+                .when(userRepository).flush();
+
+        BusinessException exception = assertThrows(BusinessException.class, () -> authService.register(req));
+
+        assertEquals(ErrorCode.REGISTER_USERNAME_EXISTS, exception.getErrorCode());
     }
 
     @Test

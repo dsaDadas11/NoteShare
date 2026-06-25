@@ -39,6 +39,9 @@ class ProfileViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ProfileUiState(isMyProfile = targetUserId == null))
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
 
+    private var profileRequestGeneration = 0L
+    private var notesRequestGeneration = 0L
+
     init {
         loadProfile()
     }
@@ -48,6 +51,8 @@ class ProfileViewModel @Inject constructor(
     }
 
     fun loadProfile() {
+        val profileGeneration = ++profileRequestGeneration
+        notesRequestGeneration++
         viewModelScope.launch {
             // 首次加载（profile为空）时显示全屏加载圈；已有数据时静默刷新
             val showFullLoading = _uiState.value.profile == null
@@ -57,6 +62,7 @@ class ProfileViewModel @Inject constructor(
                 // 我的主页：只发一个请求
                 when (val result = repository.getMyProfile()) {
                     is Result.Success -> {
+                        if (profileGeneration != profileRequestGeneration) return@launch
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
@@ -64,9 +70,10 @@ class ProfileViewModel @Inject constructor(
                                 isMyProfile = true
                             )
                         }
-                        loadNotes(isRefresh = true)
+                        loadNotesForProfile(result.data.id, isRefresh = true)
                     }
                     is Result.Error -> {
+                        if (profileGeneration != profileRequestGeneration) return@launch
                         _uiState.update { it.copy(isLoading = false, error = result.message) }
                     }
                 }
@@ -74,6 +81,7 @@ class ProfileViewModel @Inject constructor(
                 // 他人主页：也只发一个请求
                 when (val result = repository.getUserProfile(targetUserId)) {
                     is Result.Success -> {
+                        if (profileGeneration != profileRequestGeneration) return@launch
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
@@ -81,9 +89,10 @@ class ProfileViewModel @Inject constructor(
                                 isMyProfile = false
                             )
                         }
-                        loadNotes(isRefresh = true)
+                        loadNotesForProfile(result.data.id, isRefresh = true)
                     }
                     is Result.Error -> {
+                        if (profileGeneration != profileRequestGeneration) return@launch
                         _uiState.update { it.copy(isLoading = false, error = result.message) }
                     }
                 }
@@ -93,6 +102,10 @@ class ProfileViewModel @Inject constructor(
 
     fun loadNotes(isRefresh: Boolean = false) {
         val currentProfile = _uiState.value.profile ?: return
+        loadNotesForProfile(currentProfile.id, isRefresh)
+    }
+
+    private fun loadNotesForProfile(profileId: Long, isRefresh: Boolean = false) {
         if (isRefresh) {
             _uiState.update { it.copy(notesLoading = true, loadMoreFailed = false) }
         } else {
@@ -101,12 +114,15 @@ class ProfileViewModel @Inject constructor(
         }
 
         val pageToLoad = if (isRefresh) 1 else _uiState.value.notesCurrentPage + 1
+        val notesGeneration = ++notesRequestGeneration
 
         viewModelScope.launch {
-            when (val result = repository.getUserNotes(currentProfile.id, pageToLoad)) {
+            when (val result = repository.getUserNotes(profileId, pageToLoad)) {
                 is Result.Success -> {
+                    if (notesGeneration != notesRequestGeneration) return@launch
                     val pageData = result.data
                     _uiState.update { state ->
+                        if (state.profile?.id != profileId) return@update state
                         state.copy(
                             profile = state.profile?.copy(
                                 noteCount = pageData.total.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
@@ -120,6 +136,7 @@ class ProfileViewModel @Inject constructor(
                     }
                 }
                 is Result.Error -> {
+                    if (notesGeneration != notesRequestGeneration) return@launch
                     _uiState.update { it.copy(notesLoading = false, error = result.message, loadMoreFailed = true) }
                 }
             }

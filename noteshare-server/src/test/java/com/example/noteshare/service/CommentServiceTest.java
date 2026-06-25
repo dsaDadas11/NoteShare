@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 
@@ -103,5 +104,31 @@ class CommentServiceTest {
 
         assertTrue(response.getItems().get(0).isMine());
         assertFalse(response.getItems().get(1).isMine());
+    }
+
+    @Test
+    void likeComment_ConcurrentDuplicate_doesNotIncrementCount() {
+        when(commentRepository.existsById(10L)).thenReturn(true);
+        when(commentLikeRelRepository.saveAndFlush(any()))
+                .thenThrow(new DataIntegrityViolationException("duplicate comment like"));
+
+        BusinessException exception = assertThrows(
+                BusinessException.class,
+                () -> commentService.likeComment(1L, 10L));
+
+        assertEquals(ErrorCode.COMMENT_LIKE_ALREADY, exception.getErrorCode());
+        verify(commentRepository, never()).incrementLikeCount(10L);
+    }
+
+    @Test
+    void unlikeComment_NoDeletedRow_doesNotDecrementCount() {
+        when(commentLikeRelRepository.deleteByUserIdAndCommentId(1L, 10L)).thenReturn(0);
+
+        BusinessException exception = assertThrows(
+                BusinessException.class,
+                () -> commentService.unlikeComment(1L, 10L));
+
+        assertEquals(ErrorCode.COMMENT_LIKE_NOT_FOUND, exception.getErrorCode());
+        verify(commentRepository, never()).decrementLikeCount(10L);
     }
 }
