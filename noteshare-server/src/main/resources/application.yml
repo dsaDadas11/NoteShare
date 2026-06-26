@@ -8,7 +8,7 @@ spring:
 
   # 默认使用 MySQL
   datasource:
-    url: jdbc:mysql://localhost:3306/noteshare?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8
+    url: jdbc:mysql://localhost:3306/noteshare?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8
     username: root
     password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver

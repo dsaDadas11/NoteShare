@@ -1,0 +1,316 @@
+<mxfile host="app.diagrams.net" agent="NoteShare" version="24.7.17" type="device">
+  <diagram id="noteshare-er" name="NoteShare E-R">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="title" value="NoteShare 数据库 E-R 图" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=18;fontStyle=1;fontFamily=Microsoft YaHei;" vertex="1" parent="1">
+          <mxGeometry x="500" y="10" width="400" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- ========== Entities ========== -->
+
+        <mxCell id="e_user" value="&lt;b&gt;User（用户）&lt;/b&gt;&lt;hr size=&quot;1&quot;&gt;&lt;div align=&quot;left&quot; style=&quot;padding-left:8px&quot;&gt;&lt;u&gt;id&lt;/u&gt; : BIGINT PK&lt;br&gt;username : VARCHAR(50) UK&lt;br&gt;password_hash : VARCHAR(100)&lt;br&gt;nickname : VARCHAR(50)&lt;br&gt;avatar_url : VARCHAR(500)&lt;br&gt;bio : VARCHAR(500)&lt;br&gt;created_at : DATETIME&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=top;spacingTop=2;fontFamily=Microsoft YaHei;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="560" y="60" width="240" height="175" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_note" value="&lt;b&gt;Note（笔记）&lt;/b&gt;&lt;hr&gt;&lt;div align=&quot;left&quot; style=&quot;padding-left:8px&quot;&gt;&lt;u&gt;id&lt;/u&gt; : BIGINT PK&lt;br&gt;author_id : BIGINT FK&lt;br&gt;title : VARCHAR(100)&lt;br&gt;content : TEXT&lt;br&gt;like_count : INT&lt;br&gt;comment_count : INT&lt;br&gt;created_at : DATETIME&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=top;spacingTop=2;fontFamily=Microsoft YaHei;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="560" y="360" width="240" height="165" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_comment" value="&lt;b&gt;Comment（评论）&lt;/b&gt;&lt;hr&gt;&lt;div align=&quot;left&quot; style=&quot;padding-left:8px&quot;&gt;&lt;u&gt;id&lt;/u&gt; : BIGINT PK&lt;br&gt;note_id : BIGINT FK&lt;br&gt;user_id : BIGINT FK&lt;br&gt;parent_id : BIGINT FK&lt;br&gt;content : TEXT&lt;br&gt;like_count : INT&lt;br&gt;reply_count : INT&lt;br&gt;reply_to_author : VARCHAR(50)&lt;br&gt;created_at : DATETIME&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=top;spacingTop=2;fontFamily=Microsoft YaHei;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="540" y="640" width="280" height="195" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_note_image" value="&lt;b&gt;NoteImage（笔记图片）&lt;/b&gt;&lt;hr&gt;&lt;div align=&quot;left&quot; style=&quot;padding-left:8px&quot;&gt;&lt;u&gt;id&lt;/u&gt; : BIGINT PK&lt;br&gt;note_id : BIGINT FK&lt;br&gt;url : VARCHAR(500)&lt;br&gt;sort : INT&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=top;spacingTop=2;fontFamily=Microsoft YaHei;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="200" y="360" width="220" height="115" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_note_video" value="&lt;b&gt;NoteVideo（笔记视频）&lt;/b&gt;&lt;hr&gt;&lt;div align=&quot;left&quot; style=&quot;padding-left:8px&quot;&gt;&lt;u&gt;id&lt;/u&gt; : BIGINT PK&lt;br&gt;note_id : BIGINT FK&lt;br&gt;url : VARCHAR(500)&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=top;spacingTop=2;fontFamily=Microsoft YaHei;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="200" y="510" width="220" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_like_rel" value="&lt;b&gt;LikeRel（笔记点赞）&lt;/b&gt;&lt;hr&gt;&lt;div align=&quot;left&quot; style=&quot;padding-left:8px&quot;&gt;&lt;u&gt;id&lt;/u&gt; : BIGINT PK&lt;br&gt;user_id : BIGINT FK&lt;br&gt;note_id : BIGINT FK&lt;br&gt;created_at : DATETIME&lt;br&gt;&lt;i&gt;UK(user_id, note_id)&lt;/i&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=top;spacingTop=2;fontFamily=Microsoft YaHei;fontSize=11;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="920" y="360" width="230" height="130" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_comment_like" value="&lt;b&gt;CommentLikeRel（评论点赞）&lt;/b&gt;&lt;hr&gt;&lt;div align=&quot;left&quot; style=&quot;padding-left:8px&quot;&gt;&lt;u&gt;id&lt;/u&gt; : BIGINT PK&lt;br&gt;user_id : BIGINT FK&lt;br&gt;comment_id : BIGINT FK&lt;br&gt;created_at : DATETIME&lt;br&gt;&lt;i&gt;UK(user_id, comment_id)&lt;/i&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=top;spacingTop=2;fontFamily=Microsoft YaHei;fontSize=11;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="920" y="660" width="250" height="130" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_follow" value="&lt;b&gt;Follow（关注关系）&lt;/b&gt;&lt;hr&gt;&lt;div align=&quot;left&quot; style=&quot;padding-left:8px&quot;&gt;&lt;u&gt;id&lt;/u&gt; : BIGINT PK&lt;br&gt;follower_id : BIGINT FK&lt;br&gt;followee_id : BIGINT FK&lt;br&gt;created_at : DATETIME&lt;br&gt;&lt;i&gt;UK(follower_id, followee_id)&lt;/i&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=top;spacingTop=2;fontFamily=Microsoft YaHei;fontSize=11;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="200" y="80" width="250" height="130" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_notification" value="&lt;b&gt;Notification（通知）&lt;/b&gt;&lt;hr&gt;&lt;div align=&quot;left&quot; style=&quot;padding-left:8px&quot;&gt;&lt;u&gt;id&lt;/u&gt; : BIGINT PK&lt;br&gt;type : VARCHAR(20)&lt;br&gt;sender_id : BIGINT FK&lt;br&gt;receiver_id : BIGINT FK&lt;br&gt;note_id : BIGINT FK&lt;br&gt;comment_content : VARCHAR(500)&lt;br&gt;is_read : BOOLEAN&lt;br&gt;created_at : DATETIME&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=top;spacingTop=2;fontFamily=Microsoft YaHei;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="920" y="60" width="250" height="185" as="geometry" />
+        </mxCell>
+
+        <!-- ========== Relationship Diamonds (1:N) ========== -->
+
+        <mxCell id="r_publish" value="发布" style="rhombus;whiteSpace=wrap;html=1;align=center;fontFamily=Microsoft YaHei;fontSize=12;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="640" y="270" width="80" height="55" as="geometry" />
+        </mxCell>
+
+        <mxCell id="r_has_comment" value="拥有" style="rhombus;whiteSpace=wrap;html=1;align=center;fontFamily=Microsoft YaHei;fontSize=12;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="640" y="560" width="80" height="55" as="geometry" />
+        </mxCell>
+
+        <mxCell id="r_write_comment" value="发表" style="rhombus;whiteSpace=wrap;html=1;align=center;fontFamily=Microsoft YaHei;fontSize=12;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="900" y="560" width="80" height="55" as="geometry" />
+        </mxCell>
+
+        <mxCell id="r_reply" value="回复" style="rhombus;whiteSpace=wrap;html=1;align=center;fontFamily=Microsoft YaHei;fontSize=12;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="360" y="700" width="80" height="55" as="geometry" />
+        </mxCell>
+
+        <mxCell id="r_has_image" value="包含" style="rhombus;whiteSpace=wrap;html=1;align=center;fontFamily=Microsoft YaHei;fontSize=12;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="430" y="390" width="70" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="r_has_video" value="包含" style="rhombus;whiteSpace=wrap;html=1;align=center;fontFamily=Microsoft YaHei;fontSize=12;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="430" y="530" width="70" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="r_notify_send" value="发送" style="rhombus;whiteSpace=wrap;html=1;align=center;fontFamily=Microsoft YaHei;fontSize=12;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="820" y="120" width="70" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="r_notify_recv" value="接收" style="rhombus;whiteSpace=wrap;html=1;align=center;fontFamily=Microsoft YaHei;fontSize=12;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="820" y="200" width="70" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="r_notify_note" value="关联" style="rhombus;whiteSpace=wrap;html=1;align=center;fontFamily=Microsoft YaHei;fontSize=12;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="820" y="300" width="70" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- M:N relationship diamonds -->
+        <mxCell id="r_like_note" value="点赞" style="rhombus;whiteSpace=wrap;html=1;align=center;fontFamily=Microsoft YaHei;fontSize=12;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="820" y="400" width="70" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="r_like_comment" value="点赞" style="rhombus;whiteSpace=wrap;html=1;align=center;fontFamily=Microsoft YaHei;fontSize=12;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="820" y="700" width="70" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="r_follow" value="关注" style="rhombus;whiteSpace=wrap;html=1;align=center;fontFamily=Microsoft YaHei;fontSize=12;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="470" y="120" width="70" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Legend -->
+        <mxCell id="legend" value="&lt;b&gt;图例&lt;/b&gt;&lt;hr&gt;■ 蓝色：实体&lt;br&gt;■ 黄色：联系表（M:N 实现）&lt;br&gt;◆ 紫色：联系（菱形）&lt;br&gt;&lt;u&gt;下划线&lt;/u&gt;：主键 PK&lt;br&gt;FK：外键 | UK：唯一约束" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=8;spacingTop=4;fontFamily=Microsoft YaHei;fontSize=11;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="40" y="60" width="140" height="130" as="geometry" />
+        </mxCell>
+
+        <!-- ========== Edges: User - 发布 - Note ========== -->
+        <mxCell id="edge_u_pub" style="endArrow=none;html=1;strokeWidth=1;fontFamily=Microsoft YaHei;fontSize=11;" edge="1" parent="1" source="e_user" target="r_publish">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_u_pub_c" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;fontFamily=Microsoft YaHei;fontSize=11;" vertex="1" connectable="0" parent="edge_u_pub">
+          <mxGeometry x="-0.2" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="edge_pub_n" style="endArrow=none;html=1;strokeWidth=1;" edge="1" parent="1" source="r_publish" target="e_note">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_pub_n_c" value="n" style="edgeLabel;html=1;align=center;verticalAlign=middle;fontFamily=Microsoft YaHei;fontSize=11;" vertex="1" connectable="0" parent="edge_pub_n">
+          <mxGeometry x="0.2" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
+        </mxCell>
+
+        <!-- Note - 拥有 - Comment -->
+        <mxCell id="edge_n_has" style="endArrow=none;html=1;strokeWidth=1;" edge="1" parent="1" source="e_note" target="r_has_comment">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_n_has_c" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;fontFamily=Microsoft YaHei;fontSize=11;" vertex="1" connectable="0" parent="edge_n_has">
+          <mxGeometry x="-0.2" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="edge_has_c" style="endArrow=none;html=1;strokeWidth=1;" edge="1" parent="1" source="r_has_comment" target="e_comment">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_has_c_c" value="n" style="edgeLabel;html=1;align=center;verticalAlign=middle;fontFamily=Microsoft YaHei;fontSize=11;" vertex="1" connectable="0" parent="edge_has_c">
+          <mxGeometry x="0.2" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
+        </mxCell>
+
+        <!-- User - 发表 - Comment (route via right side) -->
+        <mxCell id="edge_u_write" style="endArrow=none;html=1;strokeWidth=1;exitX=1;exitY=0.75;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="e_user" target="r_write_comment">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="940" y="191" />
+              <mxPoint x="940" y="540" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_u_write_c" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;fontFamily=Microsoft YaHei;fontSize=11;" vertex="1" connectable="0" parent="edge_u_write">
+          <mxGeometry x="-0.85" y="1" relative="1" as="geometry"><mxPoint x="10" y="-8" as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="edge_write_c" style="endArrow=none;html=1;strokeWidth=1;" edge="1" parent="1" source="r_write_comment" target="e_comment">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_write_c_c" value="n" style="edgeLabel;html=1;align=center;verticalAlign=middle;fontFamily=Microsoft YaHei;fontSize=11;" vertex="1" connectable="0" parent="edge_write_c">
+          <mxGeometry x="0.2" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
+        </mxCell>
+
+        <!-- Comment - 回复 - Comment (self) -->
+        <mxCell id="edge_c_reply" style="endArrow=none;html=1;strokeWidth=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;" edge="1" parent="1" source="e_comment" target="r_reply">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_c_reply_c" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;fontFamily=Microsoft YaHei;fontSize=11;" vertex="1" connectable="0" parent="edge_c_reply">
+          <mxGeometry x="0.3" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="edge_reply_c" style="endArrow=none;html=1;strokeWidth=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.75;entryDx=0;entryDy=0;" edge="1" parent="1" source="r_reply" target="e_comment">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_reply_c_c" value="n" style="edgeLabel;html=1;align=center;verticalAlign=middle;fontFamily=Microsoft YaHei;fontSize=11;" vertex="1" connectable="0" parent="edge_reply_c">
+          <mxGeometry x="-0.3" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
+        </mxCell>
+
+        <!-- Note - 包含 - NoteImage -->
+        <mxCell id="edge_n_img" style="endArrow=none;html=1;strokeWidth=1;" edge="1" parent="1" source="e_note" target="r_has_image">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_n_img_c" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;fontFamily=Microsoft YaHei;fontSize=11;" vertex="1" connectable="0" parent="edge_n_img">
+          <mxGeometry x="-0.3" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="edge_img_ni" style="endArrow=none;html=1;strokeWidth=1;" edge="1" parent="1" source="r_has_image" target="e_note_image">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_img_ni_c" value="n" style="edgeLabel;html=1;align=center;verticalAlign=middle;fontFamily=Microsoft YaHei;fontSize=11;" vertex="1" connectable="0" parent="edge_img_ni">
+          <mxGeometry x="0.3" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
+        </mxCell>
+
+        <!-- Note - 包含 - NoteVideo -->
+        <mxCell id="edge_n_vid" style="endArrow=none;html=1;strokeWidth=1;exitX=0;exitY=0.75;exitDx=0;exitDy=0;" edge="1" parent="1" source="e_note" target="r_has_video">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_n_vid_c" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;fontFamily=Microsoft YaHei;fontSize=11;" vertex="1" connectable="0" parent="edge_n_vid">
+          <mxGeometry x="-0.2" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="edge_vid_nv" style="endArrow=none;html=1;strokeWidth=1;" edge="1" parent="1" source="r_has_video" target="e_note_video">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_vid_nv_c" value="n" style="edgeLabel;html=1;align=center;verticalAlign=middle;fontFamily=Microsoft YaHei;fontSize=11;" vertex="1" connectable="0" parent="edge_vid_nv">
+          <mxGeometry x="0.3" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
+        </mxCell>
+
+        <!-- User - 点赞(M:N) - Note via LikeRel -->
+        <mxCell id="edge_u_like" style="endArrow=none;html=1;strokeWidth=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="e_user" target="r_like_note">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="855" y="147" />
+              <mxPoint x="855" y="425" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_u_like_c" value="m" style="edgeLabel;html=1;align=center;verticalAlign=middle;fontFamily=Microsoft YaHei;fontSize=11;" vertex="1" connectable="0" parent="edge_u_like">
+          <mxGeometry x="-0.9" y="1" relative="1" as="geometry"><mxPoint x="12" as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="edge_like_lr" style="endArrow=none;html=1;strokeWidth=1;dashed=1;dashPattern=4 4;" edge="1" parent="1" source="r_like_note" target="e_like_rel">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_like_n" style="endArrow=none;html=1;strokeWidth=1;" edge="1" parent="1" source="r_like_note" target="e_note">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_like_n_c" value="n" style="edgeLabel;html=1;align=center;verticalAlign=middle;fontFamily=Microsoft YaHei;fontSize=11;" vertex="1" connectable="0" parent="edge_like_n">
+          <mxGeometry x="-0.2" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
+        </mxCell>
+
+        <!-- User - 点赞(M:N) - Comment via CommentLikeRel -->
+        <mxCell id="edge_u_clike" style="endArrow=none;html=1;strokeWidth=1;exitX=1;exitY=0.85;exitDx=0;exitDy=0;" edge="1" parent="1" source="e_user" target="r_like_comment">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="870" y="209" />
+              <mxPoint x="870" y="725" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_u_clike_c" value="m" style="edgeLabel;html=1;align=center;verticalAlign=middle;fontFamily=Microsoft YaHei;fontSize=11;" vertex="1" connectable="0" parent="edge_u_clike">
+          <mxGeometry x="-0.92" relative="1" as="geometry"><mxPoint x="10" as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="edge_clike_clr" style="endArrow=none;html=1;strokeWidth=1;dashed=1;dashPattern=4 4;" edge="1" parent="1" source="r_like_comment" target="e_comment_like">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_clike_c" style="endArrow=none;html=1;strokeWidth=1;" edge="1" parent="1" source="r_like_comment" target="e_comment">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_clike_c_c" value="n" style="edgeLabel;html=1;align=center;verticalAlign=middle;fontFamily=Microsoft YaHei;fontSize=11;" vertex="1" connectable="0" parent="edge_clike_c">
+          <mxGeometry x="-0.2" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
+        </mxCell>
+
+        <!-- User - 关注(M:N) - User via Follow -->
+        <mxCell id="edge_u_follow" style="endArrow=none;html=1;strokeWidth=1;exitX=0;exitY=0.25;exitDx=0;exitDy=0;" edge="1" parent="1" source="e_user" target="r_follow">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_u_follow_c" value="m" style="edgeLabel;html=1;align=center;verticalAlign=middle;fontFamily=Microsoft YaHei;fontSize=11;" vertex="1" connectable="0" parent="edge_u_follow">
+          <mxGeometry x="0.2" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="edge_follow_f" style="endArrow=none;html=1;strokeWidth=1;dashed=1;dashPattern=4 4;" edge="1" parent="1" source="r_follow" target="e_follow">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_follow_u2" style="endArrow=none;html=1;strokeWidth=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="e_follow" target="e_user">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="160" y="145" />
+              <mxPoint x="160" y="147" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_follow_u2_c" value="n（被关注者）" style="edgeLabel;html=1;align=center;verticalAlign=middle;fontFamily=Microsoft YaHei;fontSize=10;" vertex="1" connectable="0" parent="edge_follow_u2">
+          <mxGeometry x="0.1" relative="1" as="geometry"><mxPoint x="-30" y="-10" as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="edge_f_follow" style="endArrow=none;html=1;strokeWidth=1;exitX=1;exitY=0.25;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="e_follow" target="r_follow">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_f_follow_c" value="n（关注者）" style="edgeLabel;html=1;align=center;verticalAlign=middle;fontFamily=Microsoft YaHei;fontSize=10;" vertex="1" connectable="0" parent="edge_f_follow">
+          <mxGeometry x="-0.3" relative="1" as="geometry"><mxPoint y="-10" as="offset" /></mxGeometry>
+        </mxCell>
+
+        <!-- Notification relationships -->
+        <mxCell id="edge_u_send" style="endArrow=none;html=1;strokeWidth=1;exitX=1;exitY=0.2;exitDx=0;exitDy=0;" edge="1" parent="1" source="e_user" target="r_notify_send">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_u_send_c" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;fontFamily=Microsoft YaHei;fontSize=11;" vertex="1" connectable="0" parent="edge_u_send">
+          <mxGeometry x="-0.3" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="edge_send_notif" style="endArrow=none;html=1;strokeWidth=1;" edge="1" parent="1" source="r_notify_send" target="e_notification">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_send_notif_c" value="n" style="edgeLabel;html=1;align=center;verticalAlign=middle;fontFamily=Microsoft YaHei;fontSize=11;" vertex="1" connectable="0" parent="edge_send_notif">
+          <mxGeometry x="0.2" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge_u_recv" style="endArrow=none;html=1;strokeWidth=1;exitX=1;exitY=0.4;exitDx=0;exitDy=0;" edge="1" parent="1" source="e_user" target="r_notify_recv">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_u_recv_c" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;fontFamily=Microsoft YaHei;fontSize=11;" vertex="1" connectable="0" parent="edge_u_recv">
+          <mxGeometry x="-0.3" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="edge_recv_notif" style="endArrow=none;html=1;strokeWidth=1;" edge="1" parent="1" source="r_notify_recv" target="e_notification">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_recv_notif_c" value="n" style="edgeLabel;html=1;align=center;verticalAlign=middle;fontFamily=Microsoft YaHei;fontSize=11;" vertex="1" connectable="0" parent="edge_recv_notif">
+          <mxGeometry x="0.2" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge_n_notif" style="endArrow=none;html=1;strokeWidth=1;exitX=1;exitY=0.15;exitDx=0;exitDy=0;" edge="1" parent="1" source="e_note" target="r_notify_note">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="855" y="385" />
+              <mxPoint x="855" y="325" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_n_notif_c" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;fontFamily=Microsoft YaHei;fontSize=11;" vertex="1" connectable="0" parent="edge_n_notif">
+          <mxGeometry x="-0.7" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="edge_notif_rel" style="endArrow=none;html=1;strokeWidth=1;" edge="1" parent="1" source="r_notify_note" target="e_notification">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_notif_rel_c" value="n" style="edgeLabel;html=1;align=center;verticalAlign=middle;fontFamily=Microsoft YaHei;fontSize=11;" vertex="1" connectable="0" parent="edge_notif_rel">
+          <mxGeometry x="0.2" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

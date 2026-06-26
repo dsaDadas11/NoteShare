@@ -1,8 +1,8 @@
 package com.example.noteshare.core.di
 
-import android.os.Build
 import com.example.noteshare.BuildConfig
 import com.example.noteshare.core.network.TokenInterceptor
+import com.example.noteshare.core.network.resolveApiBaseUrl
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import dagger.Module
 import dagger.Provides
@@ -19,35 +19,7 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
-    private val BASE_URL: String = resolveBaseUrl(BuildConfig.BASE_URL)
-
-    private fun resolveBaseUrl(configuredBaseUrl: String): String {
-        val hostLoopback = configuredBaseUrl.startsWith("http://127.0.0.1:8200/") ||
-            configuredBaseUrl.startsWith("http://localhost:8200/")
-        return if (hostLoopback && isAndroidEmulator()) {
-            "http://10.0.2.2:8200/"
-        } else {
-            configuredBaseUrl
-        }
-    }
-
-    private fun isAndroidEmulator(): Boolean {
-        val fingerprint = Build.FINGERPRINT.lowercase()
-        val model = Build.MODEL.lowercase()
-        val manufacturer = Build.MANUFACTURER.lowercase()
-        val brand = Build.BRAND.lowercase()
-        val device = Build.DEVICE.lowercase()
-        val product = Build.PRODUCT.lowercase()
-        return fingerprint.startsWith("generic") ||
-            fingerprint.contains("emulator") ||
-            model.contains("emulator") ||
-            model.contains("android sdk built for") ||
-            manufacturer.contains("genymotion") ||
-            (brand.startsWith("generic") && device.startsWith("generic")) ||
-            product.contains("sdk_gphone") ||
-            product.contains("emulator") ||
-            product.contains("simulator")
-    }
+    private val BASE_URL: String = resolveApiBaseUrl(BuildConfig.BASE_URL)
 
     @Provides
     @Singleton

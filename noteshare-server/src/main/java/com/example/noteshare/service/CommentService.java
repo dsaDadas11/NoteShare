@@ -211,6 +211,9 @@ public class CommentService {
         // 删除评论本体
         commentRepository.delete(comment);
 
+        // 先 flush 实体删除，避免后续 @Modifying(clearAutomatically=true) 清空持久化上下文导致删除丢失
+        commentRepository.flush();
+
         // 递减笔记评论计数：评论本体 + 所有子孙回复
         int totalDecrement = 1 + allDescendants.size();
         for (int i = 0; i < totalDecrement; i++) {

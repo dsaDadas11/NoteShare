@@ -62,6 +62,7 @@ class CommentServiceTest {
         commentService.deleteComment(1L, 100L, 10L);
 
         verify(commentRepository).delete(comment);
+        verify(commentRepository).flush();
         verify(noteRepository).decrementCommentCount(100L);
     }
 
